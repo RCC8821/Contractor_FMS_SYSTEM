@@ -70,7 +70,7 @@ const getNextUID = async () => {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Copy of Contractor_Billing_FMS!B8:B',
+      range: 'Contracotr_Bill_Entry_HTML!B2:B',
     });
     const rows = res.data.values || [];
     if (rows.length === 0) return 'A1';
@@ -105,7 +105,7 @@ const getNextRCCBillNo = async () => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Copy of Contractor_Billing_FMS!O8:O', // Column O = RCC Bill No
+      range: 'Contracotr_Bill_Entry_HTML!O8:O', // Column O = RCC Bill No
     });
 
     const existing = (response.data.values || []).flat().filter(Boolean);
@@ -196,7 +196,7 @@ router.post('/submit-multiple', async (req, res) => {
     // Append to sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: 'Copy of Contractor_Billing_FMS!A8',
+      range: 'Contracotr_Bill_Entry_HTML!A8',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: dataRows }
