@@ -12,6 +12,43 @@ cloudinary.config({
 });
 
 // GET PROJECT DATA
+// router.get('/project-data', async (req, res) => {
+//   try {
+//     const sheetInfo = await sheets.spreadsheets.get({
+//       spreadsheetId,
+//       fields: 'sheets.properties.gridProperties',
+//     });
+//     const sheet = sheetInfo.data.sheets.find(s => s.properties.title === 'Project_Data');
+//     const maxRows = sheet?.properties?.gridProperties?.rowCount || 10000;
+
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: `Project_Data!A1:K${maxRows}`,
+//     });
+
+//     const rows = response.data.values || [];
+//     if (!rows.length) return res.json({ data: [], totalRows: 0 });
+
+//     const headers = rows[0];
+//     const data = [];
+
+//     for (let i = 1; i < rows.length; i++) {
+//       const row = rows[i];
+//       const obj = {};
+//       headers.forEach((h, idx) => {
+//         obj[h] = row[idx] !== undefined ? row[idx] : null;
+//       });
+//       if (Object.values(obj).some(v => v)) data.push(obj);
+//     }
+
+//     res.json({ message: 'Data fetched', totalRows: data.length, data });
+//   } catch (error) {
+//     console.error('GET /project-data error:', error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+
 router.get('/project-data', async (req, res) => {
   try {
     const sheetInfo = await sheets.spreadsheets.get({
@@ -27,21 +64,31 @@ router.get('/project-data', async (req, res) => {
     });
 
     const rows = response.data.values || [];
-    if (!rows.length) return res.json({ data: [], totalRows: 0 });
+    if (!rows.length) return res.json({ message: 'No data', totalRows: 0, columns: {} });
 
     const headers = rows[0];
-    const data = [];
+    const dataRows = rows.slice(1).filter(row => row.some(cell => cell)); // skip empty rows
 
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      const obj = {};
-      headers.forEach((h, idx) => {
-        obj[h] = row[idx] !== undefined ? row[idx] : null;
+    // Initialize columns object
+    const columns = {};
+    headers.forEach(header => {
+      columns[header] = [];
+    });
+
+    // Fill each column
+    dataRows.forEach(row => {
+      headers.forEach((header, idx) => {
+        const value = row[idx] !== undefined ? row[idx] : "";
+        columns[header].push(value);
       });
-      if (Object.values(obj).some(v => v)) data.push(obj);
-    }
+    });
 
-    res.json({ message: 'Data fetched', totalRows: data.length, data });
+    res.json({
+      message: "Data fetched - Column wise",
+      totalRows: dataRows.length,
+      columns
+    });
+
   } catch (error) {
     console.error('GET /project-data error:', error);
     res.status(500).json({ error: error.message });
