@@ -1,473 +1,460 @@
-// import React, { useState, useEffect } from 'react';
-// import { Search, Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
-// import {
-//   useLazyGetProjectDropdownDataQuery,
-//   useGetContractorBillCheckedQuery,
-// } from '../../features/billing/billCheckedSlice';
+
+// import React, { useState, useMemo } from 'react';
+// import { ChevronRight, FileText, Loader2, AlertCircle } from 'lucide-react';
+// import { useGetContractorBillCheckedQuery, useGetEnquiryCaptureBillingQuery } from '../../features/billing/billCheckedSlice';
 
 // const Bill_Checked = () => {
-//   // === RTK Hooks ===
-//   const [triggerDropdown, { data: dropdownResponse, isLoading: loadingDropdown }] =
-//     useLazyGetProjectDropdownDataQuery();
+//   const [step, setStep] = useState(1);
+//   const [formData, setFormData] = useState({
+//     projectId: '',
+//     projectName: '',
+//     contractorFirm: '',
+//     contractorName: '',
+//     rccBillNo: ''
+//   });
+//   const [filteredData, setFilteredData] = useState([]);
+//   const [editableData, setEditableData] = useState([]);
 
-//   const dropdownData = {
-//     projectIds: dropdownResponse?.projectIds || [],
-//     contractorNames: dropdownResponse?.contractorNames || [],
-//   };
+//   // GLOBAL FIELDS
+//   const [globalFiles, setGlobalFiles] = useState({
+//     measurementSheet: null,
+//     attendanceSheet: null
+//   });
+//   const [globalStatus, setGlobalStatus] = useState('');
 
-//   const {
-//     data: billData = { data: [] },
-//     isLoading: loadingBills,
-//     isError: billError,
+//   // RTK Query
+//   const { 
+//     data: enquiryData, 
+//     isLoading: loadingDropdowns, 
+//     error: dropdownError 
+//   } = useGetEnquiryCaptureBillingQuery();
+
+//   const { 
+//     data: billsData, 
+//     isLoading: loadingBills, 
+//     error: billsError 
 //   } = useGetContractorBillCheckedQuery();
 
-//   // === State ===
-//   const [projectId, setProjectId] = useState('');
-//   const [contractorName, setContractorName] = useState('');
-//   const [filteredBills, setFilteredBills] = useState([]);
-//   const [formData, setFormData] = useState({});
-//   const [fetchClicked, setFetchClicked] = useState(false);
+//   // Dropdown Options
+//   const projectOptions = useMemo(() => {
+//     if (!enquiryData?.projectIds || !enquiryData?.projectNames) return [];
+//     return enquiryData.projectIds.map((id, index) => ({
+//       id,
+//       name: enquiryData.projectNames[index] || 'Unknown Project'
+//     }));
+//   }, [enquiryData]);
 
-//   // === Load Dropdown Data ===
-//   useEffect(() => {
-//     triggerDropdown();
-//   }, []);
+//   const contractorOptions = useMemo(() => {
+//     if (!enquiryData?.contractorFirmNames || !enquiryData?.contractorNames) return [];
+//     return enquiryData.contractorFirmNames.map((firm, index) => ({
+//       firm,
+//       name: enquiryData.contractorNames[index] || 'Unknown Contractor'
+//     }));
+//   }, [enquiryData]);
 
-//   // === Debug: Log bill data when it loads ===
-//   useEffect(() => {
-//     console.log('Bill Data Loaded:', billData);
-//   }, [billData]);
+//   const rccBillOptions = useMemo(() => {
+//     if (!billsData) return [];
+//     const uniqueBills = [...new Set(billsData.map(item => item.rccBillNo))].filter(Boolean);
+//     return uniqueBills.map(billNo => ({ billNo, description: `Bill ${billNo}` }));
+//   }, [billsData]);
 
-//   // === Handle Fetch ===
-//   const handleFetchData = () => {
-//     if (!projectId || !contractorName) {
-//       alert('Please select both Project ID and Contractor Name');
+//   // Handlers
+//   const handleProjectIdChange = (e) => {
+//     const id = e.target.value;
+//     const selected = projectOptions.find(p => p.id === id);
+//     setFormData({ ...formData, projectId: id, projectName: selected?.name || '' });
+//   };
+
+//   const handleContractorFirmChange = (e) => {
+//     const firm = e.target.value;
+//     const selected = contractorOptions.find(c => c.firm === firm);
+//     setFormData({ ...formData, contractorFirm: firm, contractorName: selected?.name || '' });
+//   };
+
+//   const handleRccBillChange = (e) => {
+//     setFormData({ ...formData, rccBillNo: e.target.value });
+//   };
+
+//   const handleNext = () => {
+//     if (!formData.projectId || !formData.contractorFirm || !formData.rccBillNo) {
+//       alert('कृपया सभी फ़ील्ड भरें');
 //       return;
 //     }
 
-//     console.log('Searching for:', { projectId, contractorName });
-//     console.log('Available Bills:', billData.data);
-
-//     // MATCH karo - data types ko ensure karo
-//     const matches = billData.data.filter((row) => {
-//       const rowProjectId = String(row.projectId).trim();
-//       const rowContractor = String(row.contractorName).trim();
-//       const selectedProject = String(projectId).trim();
-//       const selectedContractor = String(contractorName).trim();
-
-//       const isMatch =
-//         rowProjectId === selectedProject && rowContractor === selectedContractor;
-
-//       if (isMatch) {
-//         console.log('✓ Match found:', row.UID, row.workName);
-//       }
-
-//       return isMatch;
-//     });
-
-//     console.log('Total Matches:', matches.length);
-
-//     if (matches.length === 0) {
-//       alert('No bills found for this combination!');
-//       setFetchClicked(true);
-//       setFilteredBills([]);
+//     if (!billsData) {
+//       alert('Bills data not loaded yet');
 //       return;
 //     }
 
-//     setFetchClicked(true);
-//     setFilteredBills(matches);
-
-//     // Initialize form data for each bill
-//     const initForm = {};
-//     matches.forEach((row) => {
-//       initForm[row.UID] = {
-//         measurementUrl2: null,
-//         attendanceUrl2: null,
-//       };
+//     const filtered = billsData.filter(item => {
+//       return (
+//         item.projectId === formData.projectId &&
+//         item.contractorName === formData.contractorName &&
+//         item.rccBillNo === formData.rccBillNo
+//       );
 //     });
-//     setFormData(initForm);
-//   };
 
-//   // === File Upload ===
-//   const handleFileChange = (uid, field, file) => {
-//     setFormData((prev) => ({
-//       ...prev,
-//       [uid]: { ...prev[uid], [field]: file },
+//     if (filtered.length === 0) {
+//       alert('कोई बिल नहीं मिला। कृपया सही जानकारी चुनें।');
+//       return;
+//     }
+
+//     setFilteredData(filtered);
+//     const initialEditableData = filtered.map(item => ({
+//       uid: item.UID,
+//       areaQuantity: '',
+//       unit: '',
+//       qualityApprove: '',
+//       photoEvidenceAfterWork2: null
 //     }));
+//     setEditableData(initialEditableData);
+//     setStep(2);
 //   };
 
-//   // === Submit ===
-//   const handleSubmit = () => {
-//     const payload = filteredBills.map((row) => ({
-//       UID: row.UID,
-//       projectId: row.projectId,
-//       measurementUrl2: formData[row.UID]?.measurementUrl2,
-//       attendanceUrl2: formData[row.UID]?.attendanceUrl2,
+//   const handleBack = () => {
+//     setStep(1);
+//     setFilteredData([]);
+//     setEditableData([]);
+//     setGlobalFiles({ measurementSheet: null, attendanceSheet: null });
+//     setGlobalStatus('');
+//   };
+
+//   const handleInputChange = (index, field, value) => {
+//     const updated = [...editableData];
+//     updated[index][field] = value;
+//     setEditableData(updated);
+//   };
+
+//   const handlePhotoEvidenceChange = (index, file) => {
+//     const updated = [...editableData];
+//     updated[index].photoEvidenceAfterWork2 = file;
+//     setEditableData(updated);
+//   };
+
+//   // SUBMIT
+//   const handleSubmitData = async () => {
+//     if (!globalFiles.measurementSheet || !globalFiles.attendanceSheet || !globalStatus) {
+//       alert('कृपया Measurement Sheet, Attendance Sheet और Status चुनें।');
+//       return;
+//     }
+
+//     const finalData = filteredData.map((item, index) => ({
+//       ...item,
+//       ...editableData[index],
+//       measurementSheetURL2: globalFiles.measurementSheet,
+//       attendanceSheetURL2: globalFiles.attendanceSheet,
+//       status: globalStatus,
+//       photoEvidenceAfterWork2: editableData[index]?.photoEvidenceAfterWork2 || null
 //     }));
-//     console.log('Submit Payload:', payload);
-//     alert('Submitted successfully!');
+
+//     console.log('Final Submitted Data:', finalData);
+//     alert(`डेटा सफलतापूर्वक सबमिट! (${finalData.length} रिकॉर्ड्स)`);
 //   };
 
-//   // === Loading & Error States ===
-//   if (loadingBills || loadingDropdown) {
-//     return (
-//       <div style={{ padding: '2rem', textAlign: 'center' }}>
-//         <p style={{ color: '#6c757d' }}>Loading data...</p>
-//       </div>
-//     );
-//   }
-
-//   if (billError) {
-//     return (
-//       <div style={{ padding: '2rem', textAlign: 'center' }}>
-//         <AlertCircle size={48} color="#dc3545" />
-//         <p style={{ color: '#dc3545' }}>Error loading bill data.</p>
-//       </div>
-//     );
-//   }
-
-//   // === Main Return ===
 //   return (
-//     <div style={{ padding: '1.5rem', fontFamily: 'system-ui, sans-serif' }}>
-//       <div style={{ marginBottom: '2rem' }}>
-//         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.75rem', fontWeight: '600' }}>
-//           Bill Checked - Data Entry
-//         </h2>
-//         <p style={{ margin: 0, color: '#6c757d' }}>
-//           Select Project ID and Contractor to view bills
-//         </p>
-//       </div>
-
-//       {/* Search Section */}
-//       <div
-//         style={{
-//           backgroundColor: '#fff',
-//           padding: '1.5rem',
-//           borderRadius: '8px',
-//           marginBottom: '1.5rem',
-//           border: '1px solid #dee2e6',
-//           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-//         }}
-//       >
-//         <h3 style={{ margin: '0 0 1.25rem', fontWeight: '600', color: '#495057' }}>
-//           Search Criteria
-//         </h3>
-
-//         <div
-//           style={{
-//             display: 'grid',
-//             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-//             gap: '1rem',
-//             marginBottom: '1.25rem',
-//           }}
-//         >
-//           {/* Project ID Dropdown */}
-//           <div>
-//             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-//               Project ID * ({dropdownData.projectIds?.length || 0})
-//             </label>
-//             <select
-//               value={projectId}
-//               onChange={(e) => setProjectId(e.target.value)}
-//               style={{
-//                 width: '100%',
-//                 padding: '0.6rem 0.75rem',
-//                 fontSize: '0.95rem',
-//                 border: '1px solid #ced4da',
-//                 borderRadius: '6px',
-//               }}
-//             >
-//               <option value="">-- Select Project ID --</option>
-//               {dropdownData.projectIds.map((id) => (
-//                 <option key={id} value={id}>
-//                   {id}
-//                 </option>
-//               ))}
-//             </select>
-//           </div>
-
-//           {/* Contractor Name Dropdown */}
-//           <div>
-//             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-//               Contractor Name * ({dropdownData.contractorNames?.length || 0})
-//             </label>
-//             <select
-//               value={contractorName}
-//               onChange={(e) => setContractorName(e.target.value)}
-//               style={{
-//                 width: '100%',
-//                 padding: '0.6rem 0.75rem',
-//                 fontSize: '0.95rem',
-//                 border: '1px solid #ced4da',
-//                 borderRadius: '6px',
-//               }}
-//             >
-//               <option value="">-- Select Contractor --</option>
-//               {dropdownData.contractorNames.map((name) => (
-//                 <option key={name} value={name}>
-//                   {name}
-//                 </option>
-//               ))}
-//             </select>
+//     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+//       <div className="max-w-7xl mx-auto">
+//         {/* Header */}
+//         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+//           <div className="flex items-center justify-between">
+//             <div>
+//               <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+//                 <FileText className="text-indigo-600" size={32} />
+//                 Bill Checked Dashboard
+//               </h1>
+//               <p className="text-gray-600 mt-2">बिल चेकिंग और वेरिफिकेशन सिस्टम</p>
+//             </div>
+//             <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-full">
+//               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+//                 1
+//               </div>
+//               <ChevronRight className="text-gray-400" size={20} />
+//               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+//                 2
+//               </div>
+//             </div>
 //           </div>
 //         </div>
 
-//         <button
-//           onClick={handleFetchData}
-//           style={{
-//             display: 'inline-flex',
-//             alignItems: 'center',
-//             gap: '0.5rem',
-//             padding: '0.65rem 1.5rem',
-//             backgroundColor: '#0d6efd',
-//             color: 'white',
-//             border: 'none',
-//             borderRadius: '6px',
-//             fontWeight: '500',
-//             cursor: 'pointer',
-//           }}
-//         >
-//           <Search size={18} />
-//           Fetch Bills
-//         </button>
-//       </div>
-
-//       {/* Results */}
-//       {fetchClicked && (
-//         filteredBills.length > 0 ? (
-//           <div>
-//             <div
-//               style={{
-//                 backgroundColor: '#d1ecf1',
-//                 padding: '0.75rem 1rem',
-//                 borderRadius: '6px',
-//                 marginBottom: '1.25rem',
-//                 color: '#0c5460',
-//                 fontWeight: '500',
-//               }}
-//             >
-//               {filteredBills.length} Bill(s) Found
+//         {/* Error */}
+//         {(dropdownError || billsError) && (
+//           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg flex items-start gap-3">
+//             <AlertCircle className="text-red-500 mt-0.5" size={20} />
+//             <div>
+//               <p className="font-semibold text-red-800">Error loading data</p>
+//               <p className="text-sm text-red-600">
+//                 {dropdownError?.data?.message || billsError?.data?.message || 'Please check your connection'}
+//               </p>
 //             </div>
+//           </div>
+//         )}
 
-//             {filteredBills.map((row, i) => (
-//               <div
-//                 key={row.UID}
-//                 style={{
-//                   backgroundColor: '#fff',
-//                   border: '1px solid #dee2e6',
-//                   borderRadius: '8px',
-//                   marginBottom: '1.25rem',
-//                   overflow: 'hidden',
-//                 }}
-//               >
-//                 <div
-//                   style={{
-//                     backgroundColor: '#f8f9fa',
-//                     padding: '1rem',
-//                     borderBottom: '1px solid #dee2e6',
-//                   }}
-//                 >
-//                   <div
-//                     style={{
-//                       display: 'flex',
-//                       justifyContent: 'space-between',
-//                       alignItems: 'center',
-//                     }}
-//                   >
-//                     <div>
-//                       <div style={{ fontWeight: '600' }}>UID: {row.UID}</div>
-//                       <div style={{ fontSize: '0.85rem', color: '#6c757d' }}>
-//                         {row.workName}
-//                       </div>
-//                     </div>
-//                     <span
-//                       style={{
-//                         background: '#0d6efd',
-//                         color: 'white',
-//                         padding: '0.3rem 0.8rem',
-//                         borderRadius: '20px',
-//                         fontSize: '0.8rem',
-//                       }}
-//                     >
-//                       Bill #{i + 1}
-//                     </span>
+//         {/* Step 1 */}
+//         {step === 1 && (
+//           <div className="bg-white rounded-lg shadow-md p-8">
+//             <h2 className="text-2xl font-bold text-gray-800 mb-6">प्रोजेक्ट और कॉन्ट्रैक्टर की जानकारी</h2>
+            
+//             {loadingDropdowns || loadingBills ? (
+//               <div className="flex items-center justify-center py-12">
+//                 <Loader2 className="animate-spin text-indigo-600" size={48} />
+//                 <span className="ml-4 text-gray-600">Loading...</span>
+//               </div>
+//             ) : (
+//               <div className="space-y-6">
+//                 <div className="grid md:grid-cols-2 gap-6">
+//                   <div>
+//                     <label className="block text-sm font-semibold text-gray-700 mb-2">Project ID *</label>
+//                     <select value={formData.projectId} onChange={handleProjectIdChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+//                       <option value="">Select Project ID</option>
+//                       {projectOptions.map(p => (
+//                         <option key={p.id} value={p.id}>{p.id} - {p.name}</option>
+//                       ))}
+//                     </select>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-semibold text-gray-700 mb-2">Project Name</label>
+//                     <input type="text" value={formData.projectName} readOnly className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600" />
 //                   </div>
 //                 </div>
 
-//                 <div style={{ padding: '1.25rem' }}>
-//                   <div
-//                     style={{
-//                       display: 'grid',
-//                       gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-//                       gap: '0.8rem',
-//                       backgroundColor: '#f8f9fa',
-//                       padding: '0.75rem',
-//                       borderRadius: '6px',
-//                       marginBottom: '1rem',
-//                     }}
-//                   >
-//                     <div>
-//                       <strong>Project:</strong> {row.projectId}
-//                     </div>
-//                     <div>
-//                       <strong>Contractor:</strong> {row.contractorName}
-//                     </div>
-//                     <div>
-//                       <strong>Bill No:</strong> {row.billNo}
-//                     </div>
-//                     <div>
-//                       <strong>Amount:</strong> ₹{row.amount}
+//                 <div className="grid md:grid-cols-2 gap-6">
+//                   <div>
+//                     <label className="block text-sm font-semibold text-gray-700 mb-2">Contractor Firm Name *</label>
+//                     <select value={formData.contractorFirm} onChange={handleContractorFirmChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+//                       <option value="">Select Firm</option>
+//                       {contractorOptions.map(c => (
+//                         <option key={c.firm} value={c.firm}>{c.firm}</option>
+//                       ))}
+//                     </select>
+//                   </div>
+//                   <div>
+//                     <label className="block text-sm font-semibold text-gray-700 mb-2">Contractor Name</label>
+//                     <input type="text" value={formData.contractorName} readOnly className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600" />
+//                   </div>
+//                 </div>
+
+//                 <div className="grid md:grid-cols-2 gap-6">
+//                   <div>
+//                     <label className="block text-sm font-semibold text-gray-700 mb-2">RCC Bill No *</label>
+//                     <select value={formData.rccBillNo} onChange={handleRccBillChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+//                       <option value="">Select Bill</option>
+//                       {rccBillOptions.map(b => (
+//                         <option key={b.billNo} value={b.billNo}>{b.billNo} - {b.description}</option>
+//                       ))}
+//                     </select>
+//                   </div>
+//                   <div className="flex items-end">
+//                     <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+//                       <p className="text-xs text-gray-600 mb-1">Selected Bill</p>
+//                       <p className="font-semibold text-blue-800">{formData.rccBillNo || 'Not Selected'}</p>
 //                     </div>
 //                   </div>
+//                 </div>
 
-//                   <div
-//                     style={{
-//                       display: 'grid',
-//                       gridTemplateColumns: '1fr 1fr',
-//                       gap: '1rem',
-//                     }}
-//                   >
-//                     <div>
-//                       <label
-//                         style={{
-//                           display: 'flex',
-//                           alignItems: 'center',
-//                           gap: '0.4rem',
-//                           fontWeight: '500',
-//                           marginBottom: '0.5rem',
-//                         }}
-//                       >
-//                         <FileText size={16} color="#0d6efd" />
-//                         Measurement Sheet 2
-//                       </label>
-//                       <div
-//                         style={{
-//                           border: '2px dashed #dee2e6',
-//                           borderRadius: '6px',
-//                           padding: '1rem',
-//                           textAlign: 'center',
-//                           position: 'relative',
-//                           backgroundColor: '#f8f9fa',
-//                           cursor: 'pointer',
-//                         }}
-//                       >
-//                         <input
-//                           type="file"
-//                           accept="image/*,.pdf"
-//                           onChange={(e) =>
-//                             handleFileChange(row.UID, 'measurementUrl2', e.target.files[0])
-//                           }
-//                           style={{
-//                             position: 'absolute',
-//                             inset: 0,
-//                             opacity: 0,
-//                             cursor: 'pointer',
-//                           }}
-//                         />
-//                         <Upload size={20} color="#0d6efd" />
-//                         <div
-//                           style={{
-//                             fontSize: '0.85rem',
-//                             color: '#6c757d',
-//                             marginTop: '0.4rem',
-//                           }}
-//                         >
-//                           {formData[row.UID]?.measurementUrl2?.name || 'Click to upload'}
-//                         </div>
-//                       </div>
-//                     </div>
-
-//                     <div>
-//                       <label
-//                         style={{
-//                           display: 'flex',
-//                           alignItems: 'center',
-//                           gap: '0.4rem',
-//                           fontWeight: '500',
-//                           marginBottom: '0.5rem',
-//                         }}
-//                       >
-//                         <FileText size={16} color="#6610f2" />
-//                         Attendance Sheet 2
-//                       </label>
-//                       <div
-//                         style={{
-//                           border: '2px dashed #dee2e6',
-//                           borderRadius: '6px',
-//                           padding: '1rem',
-//                           textAlign: 'center',
-//                           position: 'relative',
-//                           backgroundColor: '#f8f9fa',
-//                           cursor: 'pointer',
-//                         }}
-//                       >
-//                         <input
-//                           type="file"
-//                           accept="image/*,.pdf"
-//                           onChange={(e) =>
-//                             handleFileChange(row.UID, 'attendanceUrl2', e.target.files[0])
-//                           }
-//                           style={{
-//                             position: 'absolute',
-//                             inset: 0,
-//                             opacity: 0,
-//                             cursor: 'pointer',
-//                           }}
-//                         />
-//                         <Upload size={20} color="#6610f2" />
-//                         <div
-//                           style={{
-//                             fontSize: '0.85rem',
-//                             color: '#6c757d',
-//                             marginTop: '0.4rem',
-//                           }}
-//                         >
-//                           {formData[row.UID]?.attendanceUrl2?.name || 'Click to upload'}
-//                         </div>
-//                       </div>
-//                     </div>
-//                   </div>
+//                 <div className="flex justify-end mt-8">
+//                   <button onClick={handleNext} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition-all transform hover:scale-105">
+//                     Next <ChevronRight size={20} />
+//                   </button>
 //                 </div>
 //               </div>
-//             ))}
+//             )}
+//           </div>
+//         )}
 
-//             <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
-//               <button
-//                 onClick={handleSubmit}
-//                 style={{
-//                   padding: '0.75rem 2rem',
-//                   backgroundColor: '#198754',
-//                   color: 'white',
-//                   border: 'none',
-//                   borderRadius: '6px',
-//                   fontWeight: '500',
-//                   display: 'inline-flex',
-//                   alignItems: 'center',
-//                   gap: '0.5rem',
-//                   cursor: 'pointer',
-//                 }}
-//               >
-//                 <CheckCircle size={20} />
-//                 Submit All
-//               </button>
+//         {/* Step 2 */}
+//         {step === 2 && (
+//           <div className="bg-white rounded-lg shadow-md p-8">
+//             <div className="flex justify-end mb-6">
+//               <button onClick={handleBack} className="text-indigo-600 hover:text-indigo-800 font-semibold">Back</button>
 //             </div>
+
+//             {/* GLOBAL INPUTS */}
+//             <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-6 mb-8">
+//               <h3 className="text-lg font-bold text-yellow-900 mb-4">
+//                 Global Inputs (सभी {filteredData.length} UID में लागू)
+//               </h3>
+              
+//               <div className="grid md:grid-cols-3 gap-6">
+//                 <div>
+//                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+//                     Measurement Sheet URL 2 <span className="text-red-500">*</span>
+//                   </label>
+//                   <input
+//                     type="file"
+//                     accept="image/*"
+//                     onChange={(e) => setGlobalFiles(prev => ({ ...prev, measurementSheet: e.target.files[0] }))}
+//                     className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"
+//                   />
+//                   {globalFiles.measurementSheet && (
+//                     <p className="text-xs text-green-600 mt-1 truncate">Selected: {globalFiles.measurementSheet.name}</p>
+//                   )}
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+//                     Attendance Sheet URL 2 <span className="text-red-500">*</span>
+//                   </label>
+//                   <input
+//                     type="file"
+//                     accept="image/*"
+//                     onChange={(e) => setGlobalFiles(prev => ({ ...prev, attendanceSheet: e.target.files[0] }))}
+//                     className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"
+//                   />
+//                   {globalFiles.attendanceSheet && (
+//                     <p className="text-xs text-green-600 mt-1 truncate">Selected: {globalFiles.attendanceSheet.name}</p>
+//                   )}
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-sm font-semibold text-gray-700 mb-2">
+//                     Status <span className="text-red-500">*</span>
+//                   </label>
+//                   <select
+//                     value={globalStatus}
+//                     onChange={(e) => setGlobalStatus(e.target.value)}
+//                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+//                   >
+//                     <option value="">Select Status</option>
+//                     <option value="Done">Done</option>
+//                     <option value="Pending">Pending</option>
+//                     <option value="In Progress">In Progress</option>
+//                   </select>
+//                 </div>
+//               </div>
+
+//               <p className="text-xs text-yellow-700 mt-3">
+//                 ये सभी फील्ड्स सभी UID में एक साथ लागू हो जाएंगी।
+//               </p>
+//             </div>
+
+//             {/* Summary Cards */}
+//             <div className="grid md:grid-cols-4 gap-4 mb-6">
+//               <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+//                 <p className="text-sm text-gray-600">Project</p>
+//                 <p className="font-bold text-lg text-gray-800">{formData.projectName}</p>
+//               </div>
+//               <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+//                 <p className="text-sm text-gray-600">Contractor Firm</p>
+//                 <p className="font-bold text-lg text-gray-800">{formData.contractorFirm}</p>
+//               </div>
+//               <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+//                 <p className="text-sm text-gray-600">Contractor Name</p>
+//                 <p className="font-bold text-lg text-gray-800">{formData.contractorName}</p>
+//               </div>
+//               <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+//                 <p className="text-sm text-gray-600">RCC Bill No</p>
+//                 <p className="font-bold text-lg text-gray-800">{formData.rccBillNo}</p>
+//               </div>
+//             </div>
+
+//             {/* Table - Photo Evidence After Quality */}
+//             <div className="overflow-x-auto">
+//               <table className="w-full">
+//                 <thead className="bg-gray-50">
+//                   <tr>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">UID</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Work Name</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Work Desc</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Area/Qty</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unit</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Quality</th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+//                       Photo Evidence After Work 2
+//                     </th>
+//                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Global Data</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody className="bg-white divide-y divide-gray-200">
+//                   {filteredData.map((item, index) => (
+//                     <tr key={item.UID} className="hover:bg-gray-50">
+//                       <td className="px-4 py-4 whitespace-nowrap font-semibold text-indigo-600">{item.UID}</td>
+//                       <td className="px-4 py-4 text-gray-800">{item.workName}</td>
+//                       <td className="px-4 py-4 text-gray-600 text-sm max-w-xs">{item.workDesc}</td>
+//                       <td className="px-4 py-4">
+//                         <input
+//                           type="number"
+//                           value={editableData[index]?.areaQuantity || ''}
+//                           onChange={(e) => handleInputChange(index, 'areaQuantity', e.target.value)}
+//                           placeholder="Qty"
+//                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+//                         />
+//                       </td>
+//                       <td className="px-4 py-4">
+//                         <select
+//                           value={editableData[index]?.unit || ''}
+//                           onChange={(e) => handleInputChange(index, 'unit', e.target.value)}
+//                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+//                         >
+//                            <option value="">Unit</option>
+//                            <option value="sqm">Sqft</option>
+//                            <option value="cum">Nos</option>
+//                            <option value="rmt">Point</option>
+//                            <option value="nos">Rft</option>
+//                            <option value="kg">Kg</option>
+//                            <option value="ton">Hours</option>
+//                            <option value="ton">KW</option>
+//                            <option value="ton">Ltr</option>
+//                            <option value="ton">Cum</option>
+//                         </select>
+//                       </td>
+//                       <td className="px-4 py-4">
+//                         <select
+//                           value={editableData[index]?.qualityApprove || ''}
+//                           onChange={(e) => handleInputChange(index, 'qualityApprove', e.target.value)}
+//                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+//                         >
+//                           <option value="">Status</option>
+//                           <option value="approved">Approved</option>
+//                           <option value="rejected">Rejected</option>
+//                           <option value="pending">Pending</option>
+//                         </select>
+//                       </td>
+
+//                       {/* Photo Evidence After Work 2 - After Quality */}
+//                       <td className="px-4 py-4">
+//                         <input
+//                           type="file"
+//                           accept="image/*"
+//                           onChange={(e) => handlePhotoEvidenceChange(index, e.target.files[0])}
+//                           className="w-full text-sm text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+//                         />
+//                         {editableData[index]?.photoEvidenceAfterWork2 && (
+//                           <p className="text-xs text-green-600 mt-1 truncate">
+//                             Selected: {editableData[index].photoEvidenceAfterWork2.name}
+//                           </p>
+//                         )}
+//                       </td>
+
+//                       {/* Global Data - Last */}
+//                       <td className="px-4 py-4">
+//                         <div className="space-y-1 text-xs">
+//                           {globalFiles.measurementSheet && <p className="text-green-600 truncate">M: {globalFiles.measurementSheet.name}</p>}
+//                           {globalFiles.attendanceSheet && <p className="text-green-600 truncate">A: {globalFiles.attendanceSheet.name}</p>}
+//                           {globalStatus && <p className="font-semibold text-indigo-600">Status: {globalStatus}</p>}
+//                           {!globalFiles.measurementSheet && !globalFiles.attendanceSheet && !globalStatus && <p className="text-gray-400">—</p>}
+//                         </div>
+//                       </td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+
+//             {/* Submit */}
+//             {filteredData.length > 0 && (
+//               <div className="flex justify-end mt-6">
+//                 <button
+//                   onClick={handleSubmitData}
+//                   disabled={!globalFiles.measurementSheet || !globalFiles.attendanceSheet || !globalStatus}
+//                   className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+//                 >
+//                   Submit All ({filteredData.length} Records)
+//                 </button>
+//               </div>
+//             )}
 //           </div>
-//         ) : (
-//           <div
-//             style={{
-//               textAlign: 'center',
-//               padding: '2.5rem',
-//               backgroundColor: '#fff3cd',
-//               border: '1px solid #ffc107',
-//               borderRadius: '8px',
-//               color: '#856404',
-//             }}
-//           >
-//             <AlertCircle size={40} style={{ marginBottom: '0.75rem' }} />
-//             <p>No bills found for selected combination</p>
-//           </div>
-//         )
-//       )}
+//         )}
+//       </div>
 //     </div>
 //   );
 // };
@@ -477,596 +464,586 @@
 
 
 
-import React, { useState, useEffect } from 'react';
-import { Search, Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+
+import React, { useState, useMemo } from 'react';
 import {
-  useLazyGetProjectDropdownDataQuery,
+  ChevronRight,
+  FileText,
+  Loader2,
+  AlertCircle,
+  Upload,
+  CheckCircle
+} from 'lucide-react';
+import {
   useGetContractorBillCheckedQuery,
+  useGetEnquiryCaptureBillingQuery,
+  useSaveBillCheckedMutation
 } from '../../features/billing/billCheckedSlice';
 
 const Bill_Checked = () => {
-  // === RTK Hooks ===
-  const [triggerDropdown, { data: dropdownResponse, isLoading: loadingDropdown }] =
-    useLazyGetProjectDropdownDataQuery();
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    projectId: '',
+    projectName: '',
+    contractorFirm: '',
+    contractorName: '',
+    rccBillNo: '',
+    rccBillDescription: '',
+    vendorBillNo: ''
+  });
+  const [filteredData, setFilteredData] = useState([]);
+  const [editableData, setEditableData] = useState([]);
+  const [globalFiles, setGlobalFiles] = useState({
+    measurementSheet: null,
+    attendanceSheet: null
+  });
+  const [globalStatus, setGlobalStatus] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const dropdownData = {
-    projectIds: dropdownResponse?.projectIds || [],
-    contractorNames: dropdownResponse?.contractorNames || [],
-  };
+  // RTK Query Hooks
+  const {
+    data: enquiryData,
+    isLoading: loadingDropdowns,
+    error: dropdownError
+  } = useGetEnquiryCaptureBillingQuery();
 
   const {
-    data: billData = { data: [] },
+    data: billsData,
     isLoading: loadingBills,
-    isError: billError,
+    error: billsError,
+    refetch
   } = useGetContractorBillCheckedQuery();
 
-  // === State ===
-  const [projectId, setProjectId] = useState('');
-  const [contractorName, setContractorName] = useState('');
-  const [filteredBills, setFilteredBills] = useState([]);
-  const [formData, setFormData] = useState({});
-  const [fetchClicked, setFetchClicked] = useState(false);
+  const [saveBillChecked] = useSaveBillCheckedMutation();
 
-  // === Load Dropdown Data ===
-  useEffect(() => {
-    triggerDropdown();
-  }, []);
+  // === FILE TO BASE64 HELPER ===
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
-  // === Handle Fetch ===
-  const handleFetchData = () => {
-    if (!projectId || !contractorName) {
-      alert('Please select both Project ID and Contractor Name');
+  // === MEMOIZED OPTIONS ===
+  const projectOptions = useMemo(() => {
+    if (!enquiryData?.projectIds || !enquiryData?.projectNames) return [];
+    return enquiryData.projectIds.map((id, index) => ({
+      id,
+      name: enquiryData.projectNames[index] || 'Unknown Project'
+    }));
+  }, [enquiryData]);
+
+  const contractorOptions = useMemo(() => {
+    if (!enquiryData?.contractorFirmNames || !enquiryData?.contractorNames) return [];
+    return enquiryData.contractorFirmNames.map((firm, index) => ({
+      firm,
+      name: enquiryData.contractorNames[index] || 'Unknown Contractor'
+    }));
+  }, [enquiryData]);
+
+  const rccBillOptions = useMemo(() => {
+    if (!billsData) return [];
+    const uniqueBills = [...new Set(billsData.map(item => item.rccBillNo))].filter(Boolean);
+    return uniqueBills.map(billNo => ({
+      billNo,
+      description: `Bill ${billNo}`,
+      vendorBillNo: billsData.find(item => item.rccBillNo === billNo)?.vendorBillNo || ''
+    }));
+  }, [billsData]);
+
+  // === HANDLERS ===
+  const handleProjectIdChange = (e) => {
+    const id = e.target.value;
+    const selected = projectOptions.find(p => p.id === id);
+    setFormData({ ...formData, projectId: id, projectName: selected?.name || '' });
+  };
+
+  const handleContractorFirmChange = (e) => {
+    const firm = e.target.value;
+    const selected = contractorOptions.find(c => c.firm === firm);
+    setFormData({ ...formData, contractorFirm: firm, contractorName: selected?.name || '' });
+  };
+
+  const handleRccBillChange = (e) => {
+    const billNo = e.target.value;
+    const selectedBill = rccBillOptions.find(b => b.billNo === billNo);
+    setFormData({
+      ...formData,
+      rccBillNo: billNo,
+      rccBillDescription: selectedBill?.description || '',
+      vendorBillNo: selectedBill?.vendorBillNo || ''
+    });
+  };
+
+  const handleNext = () => {
+    if (!formData.projectId || !formData.contractorFirm || !formData.rccBillNo) {
+      alert('कृपया सभी फ़ील्ड भरें');
       return;
     }
 
-    console.log('Searching for:', { projectId, contractorName });
-    console.log('Available Bills:', billData.data);
+    if (!billsData) {
+      alert('Bills data not loaded yet');
+      return;
+    }
 
-    // MATCH karo - data types ko ensure karo
-    const matches = billData.data.filter((row) => {
-      const rowProjectId = String(row.projectId).trim();
-      const rowContractor = String(row.contractorName).trim();
-      const selectedProject = String(projectId).trim();
-      const selectedContractor = String(contractorName).trim();
-
-      const isMatch =
-        rowProjectId === selectedProject && rowContractor === selectedContractor;
-
-      if (isMatch) {
-        console.log('✓ Match found:', row.UID, row.workName);
-      }
-
-      return isMatch;
+    const filtered = billsData.filter(item => {
+      return (
+        item.projectId === formData.projectId &&
+        item.contractorName === formData.contractorName &&
+        item.rccBillNo === formData.rccBillNo
+      );
     });
 
-    console.log('Total Matches:', matches.length);
-
-    if (matches.length === 0) {
-      alert('No bills found for this combination!');
-      setFetchClicked(true);
-      setFilteredBills([]);
+    if (filtered.length === 0) {
+      alert('कोई बिल नहीं मिला। कृपया सही जानकारी चुनें।');
       return;
     }
 
-    setFetchClicked(true);
-    setFilteredBills(matches);
+    setFilteredData(filtered);
+    const initialEditableData = filtered.map(item => ({
+      uid: item.UID,
+      areaQuantity: '',
+      unit: '',
+      qualityApprove: '',
+      photoEvidenceAfterWork2: null
+    }));
+    setEditableData(initialEditableData);
+    setStep(2);
+  };
 
-    // Initialize form data for each bill
-    const initForm = {};
-    matches.forEach((row) => {
-      initForm[row.UID] = {
-        areaQuantity2: '',
-        unit2: '',
-        qualityApprove2: '',
-        photoEvidence2: '',
-        measurementUrl2: null,
-        attendanceUrl2: null,
+  const handleBack = () => {
+    setStep(1);
+    setFilteredData([]);
+    setEditableData([]);
+    setGlobalFiles({ measurementSheet: null, attendanceSheet: null });
+    setGlobalStatus('');
+    setSaveSuccess(false);
+  };
+
+  const handleInputChange = (index, field, value) => {
+    const updated = [...editableData];
+    updated[index][field] = value;
+    setEditableData(updated);
+  };
+
+  const handlePhotoEvidenceChange = (index, file) => {
+    const updated = [...editableData];
+    updated[index].photoEvidenceAfterWork2 = file;
+    setEditableData(updated);
+  };
+
+  // === SUBMIT WITH BASE64 UPLOAD ===
+  const handleSubmitData = async () => {
+    if (!globalFiles.measurementSheet || !globalFiles.attendanceSheet || !globalStatus) {
+      alert('कृपया Measurement Sheet, Attendance Sheet और Status चुनें।');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      // Convert Global Files to Base64
+      const measurementSheetBase64 = await fileToBase64(globalFiles.measurementSheet);
+      const attendanceSheetBase64 = await fileToBase64(globalFiles.attendanceSheet);
+
+      // Convert Per-row Photos to Base64
+      const itemsWithBase64 = await Promise.all(
+        editableData.map(async (item, index) => {
+          const photoBase64 = item.photoEvidenceAfterWork2
+            ? await fileToBase64(item.photoEvidenceAfterWork2)
+            : null;
+
+          return {
+            uid: filteredData[index].UID,
+            areaQuantity2: item.areaQuantity || '',
+            unit2: item.unit || '',
+            qualityApprove2: item.qualityApprove || '',
+            photoEvidenceBase64: photoBase64
+          };
+        })
+      );
+
+      // Prepare Final Payload
+      const payload = {
+        uids: filteredData.map(item => item.UID),
+        status: globalStatus,
+        measurementSheetBase64,
+        attendanceSheetBase64,
+        items: itemsWithBase64
       };
-    });
-    setFormData(initForm);
+
+      // Call API
+      const result = await saveBillChecked(payload).unwrap();
+
+      // Success
+      setSaveSuccess(true);
+      alert(`सफलतापूर्वक अपडेट! ${result.updated?.length || 0} रिकॉर्ड्स अपडेट हुए।`);
+      refetch(); // Refresh list
+
+      setTimeout(() => {
+        handleBack();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Save failed:', error);
+      const msg = error?.data?.error || error.message || 'Unknown error';
+      alert('सेव करने में त्रुटि: ' + msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // === File Upload ===
-  const handleFileChange = (uid, field, file) => {
-    setFormData((prev) => ({
-      ...prev,
-      [uid]: { ...prev[uid], [field]: file },
-    }));
-  };
-
-  // === Input Change ===
-  const handleInputChange = (uid, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [uid]: { ...prev[uid], [field]: value },
-    }));
-  };
-
-  // === Submit ===
-  const handleSubmit = () => {
-    const payload = filteredBills.map((row) => ({
-      UID: row.UID,
-      projectId: row.projectId,
-      areaQuantity2: formData[row.UID]?.areaQuantity2,
-      unit2: formData[row.UID]?.unit2,
-      qualityApprove2: formData[row.UID]?.qualityApprove2,
-      photoEvidence2: formData[row.UID]?.photoEvidence2,
-      remarks2: formData[row.UID]?.remarks2,
-      measurementUrl2: formData[row.UID]?.measurementUrl2,
-      attendanceUrl2: formData[row.UID]?.attendanceUrl2,
-    }));
-    console.log('Submit Payload:', payload);
-    alert('Submitted successfully!');
-  };
-
-  // === Loading & Error States ===
-  if (loadingBills || loadingDropdown) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p style={{ color: '#6c757d' }}>Loading data...</p>
-      </div>
-    );
-  }
-
-  if (billError) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <AlertCircle size={48} color="#dc3545" />
-        <p style={{ color: '#dc3545' }}>Error loading bill data.</p>
-      </div>
-    );
-  }
-
-  // === Main Return ===
   return (
-    <div style={{ padding: '1.5rem', fontFamily: 'system-ui, sans-serif', backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.75rem', fontWeight: '600' }}>
-          Bill Checked - Data Entry
-        </h2>
-        <p style={{ margin: 0, color: '#6c757d' }}>
-          Select Project ID and Contractor to view bills
-        </p>
-      </div>
-
-      {/* Search Section */}
-      <div style={{
-        backgroundColor: '#fff',
-        padding: '1.5rem',
-        borderRadius: '8px',
-        marginBottom: '1.5rem',
-        border: '1px solid #dee2e6',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      }}>
-        <h3 style={{ margin: '0 0 1.25rem', fontWeight: '600', color: '#495057' }}>
-          Search Criteria
-        </h3>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1rem',
-          marginBottom: '1.25rem',
-        }}>
-          {/* Project ID Dropdown */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              Project ID * ({dropdownData.projectIds?.length || 0})
-            </label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                fontSize: '0.95rem',
-                border: '1px solid #ced4da',
-                borderRadius: '6px',
-              }}
-            >
-              <option value="">-- Select Project ID --</option>
-              {dropdownData.projectIds.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Contractor Name Dropdown */}
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-              Contractor Name * ({dropdownData.contractorNames?.length || 0})
-            </label>
-            <select
-              value={contractorName}
-              onChange={(e) => setContractorName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                fontSize: '0.95rem',
-                border: '1px solid #ced4da',
-                borderRadius: '6px',
-              }}
-            >
-              <option value="">-- Select Contractor --</option>
-              {dropdownData.contractorNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <button
-          onClick={handleFetchData}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.65rem 1.5rem',
-            backgroundColor: '#0d6efd',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontWeight: '500',
-            cursor: 'pointer',
-          }}
-        >
-          <Search size={18} />
-          Fetch Bills
-        </button>
-      </div>
-
-      {/* Results */}
-      {fetchClicked && (
-        filteredBills.length > 0 ? (
-          <div>
-            {/* Bill Details Section - एक बार सभी bills के लिए */}
-            <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              marginBottom: '2rem',
-              border: '1px solid #dee2e6',
-              overflow: 'hidden',
-            }}>
-              {/* Header */}
-              <div style={{
-                backgroundColor: '#0d6efd',
-                color: 'white',
-                padding: '1rem',
-                fontWeight: '600',
-                fontSize: '1.1rem',
-              }}>
-                Bill Details - {filteredBills.length} Bill(s) Found
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                <FileText className="text-indigo-600" size={32} />
+                Bill Checked Dashboard
+              </h1>
+              <p className="text-gray-600 mt-2">बिल चेकिंग और वेरिफिकेशन सिस्टम</p>
+            </div>
+            <div className="flex items-center gap-2 bg-indigo-100 px-4 py-2 rounded-full">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step >= 1 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                1
               </div>
-
-              {/* Bills List */}
-              <div style={{ padding: '1.5rem' }}>
-                {filteredBills.map((row, idx) => (
-                  <div key={row.UID} style={{
-                    marginBottom: idx !== filteredBills.length - 1 ? '1.5rem' : 0,
-                    paddingBottom: idx !== filteredBills.length - 1 ? '1.5rem' : 0,
-                    borderBottom: idx !== filteredBills.length - 1 ? '1px solid #dee2e6' : 'none',
-                  }}>
-                    <div style={{
-                      fontWeight: '600',
-                      marginBottom: '0.75rem',
-                      color: '#495057',
-                      fontSize: '1rem',
-                    }}>
-                      Bill #{idx + 1} - {row.workName}
-                    </div>
-
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '1rem',
-                    }}>
-                      <div><strong>Project ID:</strong> {row.projectId}</div>
-                      <div><strong>Project Name:</strong> {row.projectName}</div>
-                      <div><strong>Site Engineer:</strong> {row.siteEngineer}</div>
-                      <div><strong>Contractor:</strong> {row.contractorName}</div>
-                      <div><strong>Firm:</strong> {row.firmName}</div>
-                      <div><strong>Description:</strong> {row.workDesc}</div>
-                      <div><strong>Qty:</strong> {row.quantity} {row.unit}</div>
-                      <div><strong>Rate:</strong> ₹{row.rate}</div>
-                      <div><strong>Amount:</strong> ₹{row.amount}</div>
-                      <div><strong>Bill No:</strong> {row.billNo}</div>
-                      <div><strong>Bill Date:</strong> {row.billDate}</div>
-                      <div><strong>Remark:</strong> {row.remark}</div>
-                    </div>
-                  </div>
-                ))}
+              <ChevronRight className="text-gray-400" size={20} />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                2
               </div>
             </div>
-
-            {/* Data Entry Section - एक बार, table format में */}
-            <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6',
-              overflow: 'hidden',
-            }}>
-              {/* Header */}
-              <div style={{
-                backgroundColor: '#198754',
-                color: 'white',
-                padding: '1rem',
-                fontWeight: '600',
-                fontSize: '1.1rem',
-              }}>
-                Data Entry Section
-              </div>
-
-              {/* Table */}
-              <div style={{ padding: '1.5rem', overflowX: 'auto' }}>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: '0.9rem',
-                }}>
-                  <thead>
-  <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>UID</th>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Area/Qty 2</th>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Unit 2</th>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Quality Approve 2</th>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Photo Evidence 2</th>
-    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600' }}>Remarks 2</th>
-  </tr>
-</thead>
-                 <tbody>
-  {filteredBills.map((row, idx) => (
-    <tr key={row.UID} style={{ borderBottom: '1px solid #dee2e6' }}>
-      {/* UID */}
-      <td style={{ padding: '0.75rem', fontWeight: '600' }}>
-        {row.UID}
-      </td>
-
-      {/* Area/Qty 2 - Number Input */}
-      <td style={{ padding: '0.75rem' }}>
-        <input
-          type="number"
-          value={formData[row.UID]?.areaQuantity2 || ''}
-          onChange={(e) => handleInputChange(row.UID, 'areaQuantity2', e.target.value)}
-          placeholder="Qty"
-          style={{
-            width: '100%',
-            padding: '0.4rem',
-            fontSize: '0.85rem',
-            border: '1px solid #ced4da',
-            borderRadius: '4px',
-          }}
-        />
-      </td>
-
-      {/* Unit 2 */}
-      <td style={{ padding: '0.75rem' }}>
-        <input
-          type="text"
-          value={formData[row.UID]?.unit2 || ''}
-          onChange={(e) => handleInputChange(row.UID, 'unit2', e.target.value)}
-          placeholder="Unit"
-          style={{
-            width: '100%',
-            padding: '0.4rem',
-            fontSize: '0.85rem',
-            border: '1px solid #ced4da',
-            borderRadius: '4px',
-          }}
-        />
-      </td>
-
-      {/* Quality Approve 2 */}
-      <td style={{ padding: '0.75rem' }}>
-        <input
-          type="text"
-          value={formData[row.UID]?.qualityApprove2 || ''}
-          onChange={(e) => handleInputChange(row.UID, 'qualityApprove2', e.target.value)}
-          placeholder="Yes/No"
-          style={{
-            width: '100%',
-            padding: '0.4rem',
-            fontSize: '0.85rem',
-            border: '1px solid #ced4da',
-            borderRadius: '4px',
-          }}
-        />
-      </td>
-
-      {/* Photo Evidence 2 - File Upload */}
-      <td style={{ padding: '0.75rem' }}>
-        <div style={{
-          border: '1px dashed #ffc107',
-          borderRadius: '4px',
-          padding: '0.5rem',
-          textAlign: 'center',
-          position: 'relative',
-          backgroundColor: '#fffbf0',
-          cursor: 'pointer',
-          fontSize: '0.75rem',
-        }}>
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={(e) =>
-              handleFileChange(row.UID, 'photoEvidence2', e.target.files[0])
-            }
-            style={{
-              position: 'absolute',
-              inset: 0,
-              opacity: 0,
-              cursor: 'pointer',
-            }}
-          />
-          <FileText size={14} color="#ffc107" style={{ marginBottom: '0.2rem' }} />
-          <div style={{ color: '#856404', fontWeight: '500' }}>
-            {formData[row.UID]?.photoEvidence2?.name
-              ? formData[row.UID].photoEvidence2.name.substring(0, 12) + '...'
-              : 'Upload Photo'}
           </div>
         </div>
-      </td>
 
-      {/* Remarks 2 */}
-      <td style={{ padding: '0.75rem' }}>
-        <input
-          type="text"
-          value={formData[row.UID]?.remarks2 || ''}
-          onChange={(e) => handleInputChange(row.UID, 'remarks2', e.target.value)}
-          placeholder="Remarks"
-          style={{
-            width: '100%',
-            padding: '0.4rem',
-            fontSize: '0.85rem',
-            border: '1px solid #ced4da',
-            borderRadius: '4px',
-          }}
-        />
-      </td>
-    </tr>
-  ))}
-</tbody>
-                </table>
+        {/* Success Message */}
+        {saveSuccess && (
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-lg flex items-center gap-3">
+            <CheckCircle className="text-green-600" size={24} />
+            <p className="font-semibold text-green-800">Data saved successfully!</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {(dropdownError || billsError) && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg flex items-start gap-3">
+            <AlertCircle className="text-red-500 mt-0.5" size={20} />
+            <div>
+              <p className="font-semibold text-red-800">Error loading data</p>
+              <p className="text-sm text-red-600">
+                {dropdownError?.data?.message || billsError?.data?.message || 'Please check your connection'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1 */}
+        {step === 1 && (
+          <div className="bg-white rounded-lg shadow-md p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">प्रोजेक्ट और कॉन्ट्रैक्टर की जानकारी</h2>
+
+            {loadingDropdowns || loadingBills ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="animate-spin text-indigo-600" size={48} />
+                <span className="ml-4 text-gray-600">Loading...</span>
               </div>
-
-              {/* File Upload Section - एक बार सभी UIDs के लिए */}
-              <div style={{ padding: '1.5rem', borderTop: '1px solid #dee2e6' }}>
-                <h4 style={{ margin: '0 0 1rem', fontWeight: '600', color: '#495057' }}>
-                  Attach Documents (Applies to all UIDs)
-                </h4>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '1.5rem',
-                }}>
-                  {/* Measurement */}
+            ) : (
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '500', marginBottom: '0.75rem' }}>
-                      <FileText size={18} color="#0d6efd" />
-                      Measurement Sheet 2
-                    </label>
-                    <div style={{
-                      border: '2px dashed #0d6efd',
-                      borderRadius: '6px',
-                      padding: '1.5rem',
-                      textAlign: 'center',
-                      position: 'relative',
-                      backgroundColor: '#f0f7ff',
-                      cursor: 'pointer',
-                    }}>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          // Apply to all UIDs
-                          filteredBills.forEach(bill => {
-                            handleFileChange(bill.UID, 'measurementUrl2', file);
-                          });
-                        }}
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          opacity: 0,
-                          cursor: 'pointer',
-                        }}
-                      />
-                      <Upload size={24} color="#0d6efd" style={{ marginBottom: '0.5rem' }} />
-                      <div style={{ fontSize: '0.9rem', color: '#0d6efd', fontWeight: '500' }}>
-                        {formData[filteredBills[0]?.UID]?.measurementUrl2?.name || 'Click to upload file'}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '0.5rem' }}>
-                        Will apply to all {filteredBills.length} UID(s)
-                      </div>
-                    </div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Project ID *</label>
+                    <select value={formData.projectId} onChange={handleProjectIdChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Select Project ID</option>
+                      {projectOptions.map(p => (
+                        <option key={p.id} value={p.id}>{p.id} - {p.name}</option>
+                      ))}
+                    </select>
                   </div>
-
-                  {/* Attendance */}
                   <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '500', marginBottom: '0.75rem' }}>
-                      <FileText size={18} color="#6610f2" />
-                      Attendance Sheet 2
-                    </label>
-                    <div style={{
-                      border: '2px dashed #6610f2',
-                      borderRadius: '6px',
-                      padding: '1.5rem',
-                      textAlign: 'center',
-                      position: 'relative',
-                      backgroundColor: '#f5f0ff',
-                      cursor: 'pointer',
-                    }}>
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          // Apply to all UIDs
-                          filteredBills.forEach(bill => {
-                            handleFileChange(bill.UID, 'attendanceUrl2', file);
-                          });
-                        }}
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          opacity: 0,
-                          cursor: 'pointer',
-                        }}
-                      />
-                      <Upload size={24} color="#6610f2" style={{ marginBottom: '0.5rem' }} />
-                      <div style={{ fontSize: '0.9rem', color: '#6610f2', fontWeight: '500' }}>
-                        {formData[filteredBills[0]?.UID]?.attendanceUrl2?.name || 'Click to upload file'}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#6c757d', marginTop: '0.5rem' }}>
-                        Will apply to all {filteredBills.length} UID(s)
-                      </div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Project Name</label>
+                    <input type="text" value={formData.projectName} readOnly className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Contractor Firm Name *</label>
+                    <select value={formData.contractorFirm} onChange={handleContractorFirmChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Select Firm</option>
+                      {contractorOptions.map(c => (
+                        <option key={c.firm} value={c.firm}>{c.firm}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Contractor Name</label>
+                    <input type="text" value={formData.contractorName} readOnly className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">RCC Bill No *</label>
+                    <select value={formData.rccBillNo} onChange={handleRccBillChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Select Bill</option>
+                      {rccBillOptions.map(b => (
+                        <option key={b.billNo} value={b.billNo}>
+                          {b.billNo} - {b.description} {b.vendorBillNo ? `| Vendor: ${b.vendorBillNo}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                      <p className="text-xs text-gray-600 mb-1">Selected Bill</p>
+                      <p className="font-semibold text-blue-800">
+                        {formData.rccBillNo || 'Not Selected'}
+                        {formData.rccBillDescription && (
+                          <span className="block text-sm font-normal text-blue-700">
+                            ({formData.rccBillDescription})
+                          </span>
+                        )}
+                        {formData.vendorBillNo && (
+                          <span className="block text-xs font-medium text-blue-900 mt-1">
+                            Vendor Bill: {formData.vendorBillNo}
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
+
+                <div className="flex justify-end mt-8">
+                  <button onClick={handleNext} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition-all transform hover:scale-105">
+                    Next <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2 */}
+        {step === 2 && (
+          <div className="bg-white rounded-lg shadow-md p-8">
+            <div className="flex justify-end mb-6">
+              <button onClick={handleBack} className="text-indigo-600 hover:text-indigo-800 font-semibold">Back</button>
+            </div>
+
+            {/* GLOBAL INPUTS */}
+            <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-6 mb-8">
+              <h3 className="text-lg font-bold text-yellow-900 mb-4">
+                Global Inputs (सभी {filteredData.length} UID में लागू)
+              </h3>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Measurement Sheet URL 2 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setGlobalFiles(prev => ({ ...prev, measurementSheet: e.target.files[0] }))}
+                    className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"
+                  />
+                  {globalFiles.measurementSheet && (
+                    <p className="text-xs text-green-600 mt-1 truncate flex items-center gap-1">
+                      <Upload size={14} /> {globalFiles.measurementSheet.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Attendance Sheet URL 2 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setGlobalFiles(prev => ({ ...prev, attendanceSheet: e.target.files[0] }))}
+                    className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200"
+                  />
+                  {globalFiles.attendanceSheet && (
+                    <p className="text-xs text-green-600 mt-1 truncate flex items-center gap-1">
+                      <Upload size={14} /> {globalFiles.attendanceSheet.name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={globalStatus}
+                    onChange={(e) => setGlobalStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="">Select Status</option>
+                    <option value="Done">Done</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Submit Button */}
-              <div style={{ padding: '1.5rem', textAlign: 'right', borderTop: '1px solid #dee2e6' }}>
-                <button
-                  onClick={handleSubmit}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    backgroundColor: '#198754',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: '500',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '1rem',
-                  }}
-                >
-                  <CheckCircle size={20} />
-                  Submit All
-                </button>
+              <p className="text-xs text-yellow-700 mt-3">
+                ये सभी फील्ड्स सभी UID में एक साथ लागू हो जाएंगी।
+              </p>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                <p className="text-sm text-gray-600">Project</p>
+                <p className="font-bold text-lg text-gray-800">{formData.projectName}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                <p className="text-sm text-gray-600">Contractor Firm</p>
+                <p className="font-bold text-lg text-gray-800">{formData.contractorFirm}</p>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                <p className="text-sm text-gray-600">Contractor Name</p>
+                <p className="font-bold text-lg text-gray-800">{formData.contractorName}</p>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+                <p className="text-sm text-gray-600">RCC Bill No</p>
+                <p className="font-bold text-lg text-gray-800">
+                  {formData.rccBillNo || '—'}
+                  {formData.rccBillDescription && (
+                    <span className="block text-sm font-normal text-orange-700 mt-1">
+                      {formData.rccBillDescription}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-500">
+                <p className="text-sm text-gray-600">Vendor Bill No</p>
+                <p className="font-bold text-lg text-gray-800">
+                  {formData.vendorBillNo || '—'}
+                </p>
               </div>
             </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">UID</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Work Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Work Desc</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Area/Qty</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Unit</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Quality</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Photo Evidence After Work 2</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Global Data</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredData.map((item, index) => (
+                    <tr key={item.UID} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap font-semibold text-indigo-600">{item.UID}</td>
+                      <td className="px-4 py-4 text-gray-800">{item.workName}</td>
+                      <td className="px-4 py-4 text-gray-600 text-sm max-w-xs">{item.workDesc}</td>
+                      <td className="px-4 py-4">
+                        <input
+                          type="number"
+                          value={editableData[index]?.areaQuantity || ''}
+                          onChange={(e) => handleInputChange(index, 'areaQuantity', e.target.value)}
+                          placeholder="Qty"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        <select
+                          value={editableData[index]?.unit || ''}
+                          onChange={(e) => handleInputChange(index, 'unit', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+                        >
+                          <option value="">Unit</option>
+                          <option value="sqm">Sqft</option>
+                          <option value="cum">Nos</option>
+                          <option value="rmt">Point</option>
+                          <option value="nos">Rft</option>
+                          <option value="kg">Kg</option>
+                          <option value="ton">Hours</option>
+                          <option value="ton">KW</option>
+                          <option value="ton">Ltr</option>
+                          <option value="ton">Cum</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-4">
+                        <select
+                          value={editableData[index]?.qualityApprove || ''}
+                          onChange={(e) => handleInputChange(index, 'qualityApprove', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white"
+                        >
+                          <option value="">Status</option>
+                          <option value="approved">Approved</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="pending">Pending</option>
+                        </select>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePhotoEvidenceChange(index, e.target.files[0])}
+                          className="w-full text-sm text-gray-600 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                        />
+                        {editableData[index]?.photoEvidenceAfterWork2 && (
+                          <p className="text-xs text-green-600 mt-1 truncate flex items-center gap-1">
+                            <Upload size={14} /> {editableData[index].photoEvidenceAfterWork2.name}
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <div className="space-y-1 text-xs">
+                          {globalFiles.measurementSheet && <p className="text-green-600 truncate">M: {globalFiles.measurementSheet.name}</p>}
+                          {globalFiles.attendanceSheet && <p className="text-green-600 truncate">A: {globalFiles.attendanceSheet.name}</p>}
+                          {globalStatus && <p className="font-semibold text-indigo-600">Status: {globalStatus}</p>}
+                          {!globalFiles.measurementSheet && !globalFiles.attendanceSheet && !globalStatus && <p className="text-gray-400">—</p>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Submit Button */}
+            {filteredData.length > 0 && (
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={handleSubmitData}
+                  disabled={isSaving || !globalFiles.measurementSheet || !globalFiles.attendanceSheet || !globalStatus}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Saving...
+                    </>
+                  ) : (
+                    <>Submit All ({filteredData.length} Records)</>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div style={{
-            textAlign: 'center',
-            padding: '2.5rem',
-            backgroundColor: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: '8px',
-            color: '#856404',
-          }}>
-            <AlertCircle size={40} style={{ marginBottom: '0.75rem' }} />
-            <p>No bills found for selected combination</p>
-          </div>
-        )
-      )}
+        )}
+      </div>
     </div>
   );
 };
