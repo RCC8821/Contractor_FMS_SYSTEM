@@ -34,7 +34,7 @@ import ContractorRequirementForm from './components/Contractor/ContractorRequire
 
 import Bill_Tally_form from "./components/Contractor_Billing/Bill_Tally_form"
 import Bill_Checked from './components/Contractor_Billing/Bill_Checked';
-
+import Bill_Checked_By_Office from './components/Contractor_Billing/Bill_Checked_By_Office';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.auth);
@@ -57,6 +57,7 @@ const App = () => {
           <Route path="Contractor-Requirement-Form" element={<ContractorRequirementForm />} />
           <Route path="Bill_Tally_form" element={<Bill_Tally_form />} />
           <Route path="Bill_Checked" element={<Bill_Checked />} />
+          <Route path="Bill_Checked_By_Office" element={<Bill_Checked_By_Office />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

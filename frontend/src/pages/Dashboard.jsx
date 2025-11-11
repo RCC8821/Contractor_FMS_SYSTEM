@@ -432,10 +432,10 @@ const Dashboard = () => {
       category: "billing",
     },
     {
-      id: "billing-payments",
-      name: "Payment Status",
+      id: "Bill_Checked_By_Office",
+      name: "Bill_Checked_By_Office",
       icon: FileText,
-      path: "/dashboard/billing/payments",
+      path: "/dashboard/Bill_Checked_By_Office",
       allowedUserTypes: ["admin"],
       category: "billing",
     },

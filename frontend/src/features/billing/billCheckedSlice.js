@@ -1,83 +1,57 @@
-
-
 // src/features/billing/billCheckedSlice.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 export const billCheckedApi = createApi({
   reducerPath: 'billCheckedApi',
-  baseQuery: fetchBaseQuery({ 
+  baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
+    prepareHeaders: (headers) => {
+      return headers;
+    },
   }),
   tagTypes: ['BillChecked', 'EnquiryCapture'],
   endpoints: (builder) => ({
-    // 1. Get Contractor Bills (Planned2: Yes, Actual2: No)
-    getContractorBillChecked: builder.query({
-      query: () => '/api/Contractor_Bill_Checked',
-      providesTags: ['BillChecked'],
-      transformResponse: (response) => {
-        return response.success ? response.data : [];
-      },
-    }),
-
-    // 2. Get Enquiry Capture Data (Dropdowns)
     getEnquiryCaptureBilling: builder.query({
       query: () => '/api/enquiry-capture-Billing',
       providesTags: ['EnquiryCapture'],
       transformResponse: (response) => {
-        return response.success 
-          ? response.data 
-          : {
-              projectIds: [],
-              projectNames: [],
-              contractorNames: [],
-              contractorFirmNames: [],
-            };
+        console.log('[RTK] Enquiry Raw:', response);
+        if (response?.success && response?.data) {
+          return response.data;
+        }
+        return {
+          projectIds: [],
+          projectNames: [],
+          contractorFirmNames: [],
+          contractorNames: [],
+        };
       },
     }),
 
-    // 3. Save Bill Checked (POST with Base64 images)
+    getContractorBillChecked: builder.query({
+      query: () => '/api/Contractor_Bill_Checked',
+      providesTags: ['BillChecked'],
+      transformResponse: (response) => {
+        console.log('[RTK] Bills Raw:', response);
+        return response?.success ? response.data : [];
+      },
+    }),
+
     saveBillChecked: builder.mutation({
       query: (payload) => ({
         url: '/api/save-Bill-Checked',
         method: 'POST',
         body: payload,
-        // payload structure:
-        // {
-        //   uids: string[],
-        //   status: string,
-        //   measurementSheetBase64: string,
-        //   attendanceSheetBase64: string,
-        //   items: [
-        //     {
-        //       uid: string,
-        //       areaQuantity2: string,
-        //       unit2: string,
-        //       qualityApprove2: string,
-        //       photoEvidenceBase64?: string
-        //     }
-        //   ]
-        // }
       }),
       invalidatesTags: ['BillChecked'],
-      transformResponse: (response) => {
-        return response;
-      },
-      transformErrorResponse: (response) => {
-        return {
-          success: false,
-          error: response.data?.error || 'Failed to save bill checked data',
-          details: response.data?.details,
-        };
-      },
     }),
   }),
 });
 
-// Export RTK Query Hooks
 export const {
-  useGetContractorBillCheckedQuery,
   useGetEnquiryCaptureBillingQuery,
+  useGetContractorBillCheckedQuery,
   useSaveBillCheckedMutation,
 } = billCheckedApi;
