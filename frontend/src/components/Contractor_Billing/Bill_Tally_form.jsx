@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building2, User, HardHat, FileText, Calendar,
@@ -22,7 +20,7 @@ const Bill_Tally_form = () => {
     data: submitRes
   }] = useSubmitMultipleWorksMutation();
 
-  // 2. Project Options – Updated for Column-wise Data
+  // 2. Project Options – Column-wise Data
   const projectOptions = useMemo(() => {
     if (!projectResponse?.columns) return [];
 
@@ -54,7 +52,7 @@ const Bill_Tally_form = () => {
     return options;
   }, [projectResponse]);
 
-  // 3. Shared State (Bill No. & Bill Date shared)
+  // 3. Shared State
   const [shared, setShared] = useState({
     projectId: '',
     projectName: '',
@@ -82,7 +80,7 @@ const Bill_Tally_form = () => {
     }
   }, [shared.projectId, projectOptions]);
 
-  // Auto-fill Contractor Firm from Contractor Name
+  // Auto-fill Contractor Firm
   useEffect(() => {
     if (!shared.contractorName) {
       setShared(p => ({ ...p, contractorFirmName: '' }));
@@ -191,7 +189,7 @@ const Bill_Tally_form = () => {
     }
   };
 
-  // 8. Helpers – Updated for Column-wise
+  // 8. Helpers
   const getColumnValues = (field) => {
     if (!projectResponse?.columns) return [];
 
@@ -224,7 +222,7 @@ const Bill_Tally_form = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 flex items-center justify-center gap-3">
             <ClipboardList className="w-10 h-10 text-blue-600" />
-            Bill Tally Form
+            Bill Entry Form
           </h1>
           <p className="text-gray-600 mt-2">Submit contractor bill details</p>
         </div>
@@ -284,6 +282,7 @@ const Bill_Tally_form = () => {
                 label="Bill No. *"
                 value={shared.billNo}
                 onChange={e => setShared(p => ({ ...p, billNo: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                 placeholder="BILL-2025-001"
                 required
               />
@@ -293,6 +292,7 @@ const Bill_Tally_form = () => {
                 type="date"
                 value={shared.billDate}
                 onChange={e => setShared(p => ({ ...p, billDate: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                 required
               />
             </div>
@@ -333,17 +333,19 @@ const Bill_Tally_form = () => {
                 />
               </div>
 
-              {/* Work Description */}
+              {/* Work Description - REQUIRED + NO ENTER SUBMIT */}
               <div className="mb-5">
                 <label className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
-                  <FileText className="w-5 h-5 text-gray-600" /> Work Description
+                  <FileText className="w-5 h-5 text-gray-600" /> Work Description *
                 </label>
                 <textarea
                   value={work.workDescription}
                   onChange={e => updateWork(idx, 'workDescription', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   rows={3}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter description..."
+                  required
                 />
               </div>
 
@@ -356,7 +358,9 @@ const Bill_Tally_form = () => {
                   step="0.01"
                   value={work.quantity}
                   onChange={e => updateWork(idx, 'quantity', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   placeholder="0.00"
+                  required
                 />
                 <ReusableDropdown
                   label="Unit *"
@@ -373,7 +377,9 @@ const Bill_Tally_form = () => {
                   step="0.01"
                   value={work.rate}
                   onChange={e => updateWork(idx, 'rate', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   placeholder="0.00"
+                  required
                 />
                 <div className="flex flex-col">
                   <label className="flex items-center gap-2 font-semibold text-gray-700 mb-2">
@@ -402,6 +408,7 @@ const Bill_Tally_form = () => {
                 <textarea
                   value={work.remark}
                   onChange={e => updateWork(idx, 'remark', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   rows={2}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Any notes..."
@@ -495,6 +502,7 @@ const ProjectDropdown = ({ options, value, onSelect }) => {
                 placeholder="Search..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                 className="w-full pl-10 pr-3 py-2 text-sm border rounded"
                 autoFocus
               />
@@ -549,6 +557,7 @@ const ReusableDropdown = ({ label, value, onSelect, options, placeholder, icon }
                   placeholder="Search..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                   className="w-full pl-10 pr-3 py-2 text-sm border rounded"
                   autoFocus
                 />

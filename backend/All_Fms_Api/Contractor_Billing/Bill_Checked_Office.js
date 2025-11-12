@@ -353,7 +353,7 @@ router.get('/Contractor_Bill_Checked_Office', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Billing_FMS!A8:AF',
+      range: 'Contractor_Billing_FMS!A7:AF',
     });
 
     let data = response.data.values || [];

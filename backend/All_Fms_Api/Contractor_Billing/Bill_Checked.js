@@ -141,8 +141,8 @@ router.post('/save-Bill-Checked', async (req, res) => {
     if (items.length !== uids.length) {
       return res.status(400).json({ success: false, error: 'uids and items count must match' });
     }
-    if (!status || !measurementSheetBase64 || !attendanceSheetBase64) {
-      return res.status(400).json({ success: false, error: 'status, measurementSheetBase64, attendanceSheetBase64 required' });
+    if (!status || !measurementSheetBase64 ) {
+      return res.status(400).json({ success: false, error: 'status, measurementSheetBase64,' });
     }
 
     // === UPLOAD GLOBAL IMAGES ===
@@ -156,7 +156,7 @@ router.post('/save-Bill-Checked', async (req, res) => {
       `attendance_${Date.now()}`
     );
 
-    if (!measurementSheetUrl2 || !attendanceSheetUrl2) {
+    if (!measurementSheetUrl2 ) {
       return res.status(500).json({ success: false, error: 'Global image upload failed' });
     }
 
