@@ -36,6 +36,13 @@ import Bill_Tally_form from "./components/Contractor_Billing/Bill_Tally_form"
 import Bill_Checked from './components/Contractor_Billing/Bill_Checked';
 import Bill_Checked_By_Office from './components/Contractor_Billing/Bill_Checked_By_Office';
 
+
+////////  Payment 
+
+
+import BILL_FINAL_BY_OFFICE from './components/Payment/BILL_FINAL_BY_OFFICE';
+
+
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.auth);
   return token ? children : <Navigate to="/" />;
@@ -58,6 +65,8 @@ const App = () => {
           <Route path="Bill_Tally_form" element={<Bill_Tally_form />} />
           <Route path="Bill_Checked" element={<Bill_Checked />} />
           <Route path="Bill_Checked_By_Office" element={<Bill_Checked_By_Office />} />
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+          <Route path='BILL_FINAL_BY_OFFICE' element={<BILL_FINAL_BY_OFFICE/>}/>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
