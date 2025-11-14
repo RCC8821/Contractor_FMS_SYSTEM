@@ -19,7 +19,7 @@ const Bill_Checked_Office = require('./All_Fms_Api/Contractor_Billing/Bill_Check
 
 ////////  Payment 
 
-const BILL_FINAL_BY_OFFICE = require('./All_Fms_Api/Payment/BILL_FINAL_BY_OFFICE')
+// const BILL_FINAL_BY_OFFICE = require('./All_Fms_Api/Payment/BILL_FINAL_BY_OFFICE')
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -50,7 +50,7 @@ app.use('/api',Bill_Checked_Office)
 
 ///// Payment
 
-app.use('/api',BILL_FINAL_BY_OFFICE)
+// app.use('/api',BILL_FINAL_BY_OFFICE)
 
 // Start the server
 const PORT = process.env.PORT || 5000;
