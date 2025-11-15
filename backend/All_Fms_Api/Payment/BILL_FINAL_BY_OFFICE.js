@@ -3,7 +3,7 @@ const express = require('express');
 const { sheets, spreadsheetId } = require('../../config/googleSheet');
 const router = express.Router();
 
-router.get('/Contractor_Bill_Checked_Office', async (req, res) => {
+router.get('/Bill_Final_Checked_Office', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -51,42 +51,7 @@ router.get('/Contractor_Bill_Checked_Office', async (req, res) => {
   }
 });
 
-// === GET: Enquiry Capture Billing ===
-router.get('/enquiry-capture-Billing-Office', async (req, res) => {
-  try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Project_Data!A:F',
-    });
 
-    const rows = response.data.values || [];
-    if (rows.length <= 1) {
-      return res.json({
-        success: true,
-        data: { projectIds: [], projectNames: [], contractorNames: [], contractorFirmNames: [] }
-      });
-    }
 
-    const data = rows.slice(1).map(row => ({
-      Project_ID: (row[0] || '').trim(),
-      Project_Name: (row[1] || '').trim(),
-      Contractor_Name: (row[4] || '').trim(),
-      Contractor_Firm_Name: (row[5] || '').trim(),
-    }));
 
-    const projectIds = [...new Set(data.map(d => d.Project_ID))].filter(Boolean);
-    const projectNames = [...new Set(data.map(d => d.Project_Name))].filter(Boolean);
-    const contractorNames = [...new Set(data.map(d => d.Contractor_Name))].filter(Boolean);
-    const contractorFirmNames = [...new Set(data.map(d => d.Contractor_Firm_Name))].filter(Boolean);
-
-    res.json({
-      success: true,
-      data: { projectIds, projectNames, contractorNames, contractorFirmNames }
-    });
-  } catch (error) {
-    console.error('GET /enquiry-capture-Billing-Office Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-module.express = router
+module.exports = router   
