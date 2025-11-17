@@ -1,39 +1,70 @@
 
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  /routes/billing/billCheckedRoutes.js   (or wherever you keep the router)
+// ─────────────────────────────────────────────────────────────────────────────
 const express = require('express');
-const { sheets, spreadsheetId } = require('../../config/googleSheet');
+const { sheets, drive, spreadsheetId } = require('../../config/googleSheet');
+const { Readable } = require('stream');               // <-- IMPORTANT
 const router = express.Router();
-const cloudinary = require('cloudinary').v2;
 
-// === CLOUDINARY CONFIG ===
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'djncr1nay',
-  api_key: process.env.CLOUDINARY_API_KEY || '747683146821287',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'WysvIFMUrulOtry9Cmux5IiCWqo',
-});
+/* -------------------------------------------------------------------------
+   Google Drive upload – NO temporary file, works on Vercel
+   Accepts:  data:image/...;base64,xxxx   OR   data:application/pdf;base64,xxxx
+   ------------------------------------------------------------------------- */
+async function uploadToGoogleDrive(base64Data, fileName) {
+  if (!base64Data || typeof base64Data !== 'string') return '';
 
-// === BASE64 TO CLOUDINARY UPLOAD HELPER ===
-async function uploadToCloudinary(base64Image, fileName) {
-  if (!base64Image || !base64Image.startsWith('data:image')) return '';
+  const match = base64Data.match(/^data:([a-zA-Z0-9\/\-\+\.]+);base64,(.+)$/);
+  if (!match) return '';
+
+  const mimeType = match[1];
+  const base64Content = match[2];
 
   try {
-    const base64Data = base64Image.replace(/^data:image\/[a-z]+;base64,/, '');
-    const result = await cloudinary.uploader.upload(
-      `data:image/jpeg;base64,${base64Data}`,
-      {
-        public_id: fileName,
-        folder: 'bill-checked',
-        overwrite: true,
-        resource_type: 'image'
-      }
-    );
-    return result.secure_url;
-  } catch (error) {
-    console.error('Cloudinary upload failed:', error.message);
-    throw new Error(`Upload failed: ${error.message}`);
+    const buffer = Buffer.from(base64Content, 'base64');
+
+    const fileStream = new Readable();
+    fileStream.push(buffer);
+    fileStream.push(null);               // end of stream
+
+    const fileMetadata = {
+      name: fileName,
+      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
+    };
+
+    const media = { mimeType, body: fileStream };
+
+    const res = await drive.files.create({
+      resource: fileMetadata,
+      media,
+      fields: 'id, webViewLink',
+      supportsAllDrives: true,
+      driveId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+      corpora: 'drive',
+    });
+
+    const fileId = res.data.id;
+    const viewUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+
+    // make it public
+    await drive.permissions.create({
+      fileId,
+      requestBody: { role: 'reader', type: 'anyone' },
+      supportsAllDrives: true,
+    });
+
+    return viewUrl;
+  } catch (err) {
+    console.error(`[DRIVE ERROR] ${fileName}:`, err.message);
+    return '';
   }
 }
 
-// === GET: Contractor Bill Checked (Unchanged) ===
+
+
 router.get('/Contractor_Bill_Checked', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -120,18 +151,20 @@ router.get('/enquiry-capture-Billing', async (req, res) => {
   }
 });
 
-// === POST: Save Bill Checked (WITH BASE64 UPLOAD) ===
+/* -------------------------------------------------------------------------
+   POST  /save-Bill-Checked
+   ------------------------------------------------------------------------- */
 router.post('/save-Bill-Checked', async (req, res) => {
   try {
     const {
       uids,
       status,
-      measurementSheetBase64,   // Base64 string
-      attendanceSheetBase64,    // Base64 string
-      items                     // array of { uid, areaQuantity2, unit2, qualityApprove2, photoEvidenceBase64 }
+      measurementSheetBase64,   // REQUIRED
+      attendanceSheetBase64,    // OPTIONAL
+      items,                    // [{uid, areaQuantity2, unit2, qualityApprove2, photoEvidenceBase64}]
     } = req.body;
 
-    // === VALIDATION ===
+    // ────── VALIDATION ──────
     if (!Array.isArray(uids) || uids.length === 0) {
       return res.status(400).json({ success: false, error: 'uids array required' });
     }
@@ -139,39 +172,43 @@ router.post('/save-Bill-Checked', async (req, res) => {
       return res.status(400).json({ success: false, error: 'items array required' });
     }
     if (items.length !== uids.length) {
-      return res.status(400).json({ success: false, error: 'uids and items count must match' });
+      return res.status(400).json({ success: false, error: 'uids & items count must match' });
     }
-    if (!status || !measurementSheetBase64 ) {
-      return res.status(400).json({ success: false, error: 'status, measurementSheetBase64,' });
-    }
-
-    // === UPLOAD GLOBAL IMAGES ===
-    const measurementSheetUrl2 = await uploadToCloudinary(
-      measurementSheetBase64,
-      `measurement_${Date.now()}`
-    );
-
-    const attendanceSheetUrl2 = await uploadToCloudinary(
-      attendanceSheetBase64,
-      `attendance_${Date.now()}`
-    );
-
-    if (!measurementSheetUrl2 ) {
-      return res.status(500).json({ success: false, error: 'Global image upload failed' });
+    if (!status || !measurementSheetBase64) {
+      return res.status(400).json({ success: false, error: 'status & measurementSheetBase64 required' });
     }
 
-    // === READ SHEET ===
-    const response = await sheets.spreadsheets.values.get({
+    // ────── UPLOAD GLOBAL FILES ──────
+    const timestamp = Date.now();
+
+    const [measurementSheetUrl, attendanceSheetUrl] = await Promise.all([
+      uploadToGoogleDrive(
+        measurementSheetBase64,
+        `measurement_${timestamp}.${measurementSheetBase64.startsWith('data:application/pdf') ? 'pdf' : 'jpg'}`
+      ),
+      attendanceSheetBase64
+        ? uploadToGoogleDrive(
+            attendanceSheetBase64,
+            `attendance_${timestamp}.${attendanceSheetBase64.startsWith('data:application/pdf') ? 'pdf' : 'jpg'}`
+          )
+        : Promise.resolve(''),                     // optional
+    ]);
+
+    if (!measurementSheetUrl) {
+      return res.status(500).json({ success: false, error: 'Failed to upload measurement sheet' });
+    }
+
+    // ────── READ SHEET (A:AC) ──────
+    const { data: { values: rows = [] } } = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Contractor_Billing_FMS!A:AC',
     });
 
-    const rows = response.data.values || [];
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'No data in sheet' });
+      return res.status(404).json({ success: false, error: 'Sheet empty' });
     }
 
-    // UID → Row Number (1-based index for sheet)
+    // UID → row‑index (1‑based for Google‑Sheets)
     const uidToRow = {};
     for (let i = 1; i < rows.length; i++) {
       const uid = rows[i][1]?.toString().trim();
@@ -183,12 +220,12 @@ router.post('/save-Bill-Checked', async (req, res) => {
     const notFound = [];
     const mismatch = [];
 
-    // === PROCESS EACH ITEM ===
+    // ────── PROCESS EACH UID ──────
     for (let i = 0; i < uids.length; i++) {
       const requestUid = uids[i].toString().trim();
       const item = items[i];
 
-      // Validate item.uid
+      // UID sanity check
       if (!item.uid || item.uid.toString().trim() !== requestUid) {
         mismatch.push({ index: i, requestUid, itemUid: item.uid });
         results.push({ uid: requestUid, success: false, error: 'UID mismatch' });
@@ -198,29 +235,29 @@ router.post('/save-Bill-Checked', async (req, res) => {
       const rowNum = uidToRow[requestUid];
       if (!rowNum) {
         notFound.push(requestUid);
-        results.push({ uid: requestUid, success: false, error: 'Not found' });
+        results.push({ uid: requestUid, success: false, error: 'UID not found' });
         continue;
       }
 
-      // === UPLOAD INDIVIDUAL PHOTO (if provided) ===
-      let photoEvidence2 = '';
+      // ---- upload per‑row photo (optional) ----
+      let photoEvidenceUrl = '';
       if (item.photoEvidenceBase64) {
-        photoEvidence2 = await uploadToCloudinary(
+        photoEvidenceUrl = await uploadToGoogleDrive(
           item.photoEvidenceBase64,
-          `evidence_${requestUid}_${Date.now()}`
+          `evidence_${requestUid}_${timestamp}.jpg`
         );
       }
 
-      // === V:AC VALUES ===
+      // ---- build V:AC values ----
       const values = [
-        status || '',                    // V
-        '',                              // W
-        measurementSheetUrl2,            // X
-        attendanceSheetUrl2,             // Y
-        item.areaQuantity2 || '',        // Z
-        item.unit2 || '',                // AA
-        item.qualityApprove2 || '',      // AB
-        photoEvidence2                   // AC
+        status,                     // V  – status
+        '',                         // W  – blank
+        measurementSheetUrl,        // X  – measurement sheet URL
+        attendanceSheetUrl || '',   // Y  – attendance sheet URL (optional)
+        item.areaQuantity2 || '',   // Z
+        item.unit2 || '',           // AA
+        item.qualityApprove2 || '', // AB
+        photoEvidenceUrl,           // AC – photo evidence
       ];
 
       updates.push(
@@ -228,32 +265,35 @@ router.post('/save-Bill-Checked', async (req, res) => {
           spreadsheetId,
           range: `Contractor_Billing_FMS!V${rowNum}:AC${rowNum}`,
           valueInputOption: 'RAW',
-          resource: { values: [values] }
+          resource: { values: [values] },
         })
       );
 
       results.push({ uid: requestUid, success: true, row: rowNum });
     }
 
-    // === EXECUTE ALL UPDATES ===
-    await Promise.all(updates);
+    // ────── EXECUTE ALL SHEET UPDATES ──────
+    if (updates.length) await Promise.all(updates);
 
-    // === RESPONSE ===
+    // ────── RESPONSE ──────
     res.json({
       success: true,
-      message: 'Smart bulk update completed with image upload',
+      message: 'Saved successfully',
       updated: results.filter(r => r.success),
       notFound,
-      mismatch: mismatch.length > 0 ? mismatch : undefined,
-      totalProcessed: uids.length
+      mismatch: mismatch.length ? mismatch : undefined,
+      totalProcessed: uids.length,
+      uploadedFiles: {
+        measurementSheetUrl,
+        attendanceSheetUrl: attendanceSheetUrl || null,
+      },
     });
-
-  } catch (error) {
-    console.error('Error in save-Bill-Checked:', error);
+  } catch (err) {
+    console.error('[save-Bill-Checked] FATAL:', err);
     res.status(500).json({
       success: false,
-      error: 'Failed to update',
-      details: error.message
+      error: 'Server error',
+      details: err.message,
     });
   }
 });
