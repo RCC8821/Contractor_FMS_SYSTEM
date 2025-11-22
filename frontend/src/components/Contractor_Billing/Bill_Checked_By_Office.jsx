@@ -1,4 +1,6 @@
 
+
+
 // import React, { useState, useMemo, useEffect } from 'react';
 // import { ChevronRight, FileText, Loader2, AlertCircle, CheckCircle, X, RefreshCw, Upload } from 'lucide-react';
 // import {
@@ -24,7 +26,6 @@
 //   });
 //   const [globalStatus, setGlobalStatus] = useState('');
 
-//   // RTK Queries
 //   const { 
 //     data: billsData, 
 //     isLoading: loadingBills, 
@@ -154,7 +155,6 @@
 //     setGlobalStatus('');
 //   };
 
-//   // Calculation
 //   const calculateRow = (row) => {
 //     const qty = parseFloat(row.Final_Area_Quantity3) || 0;
 //     const rate = parseFloat(row.RATE3) || 0;
@@ -257,7 +257,6 @@
 //           </div>
 //         </div>
 
-//         {/* Loading & Error */}
 //         {loadingBills && (
 //           <div className="bg-white rounded-lg shadow-md p-8 text-center py-16">
 //             <Loader2 className="animate-spin mx-auto text-indigo-600" size={48} />
@@ -280,7 +279,6 @@
 //           </div>
 //         )}
 
-//         {/* STEP 1 - FULLY VISIBLE */}
 //         {step === 1 && !loadingBills && !isBillsError && (
 //           <div className="bg-white rounded-lg shadow-md p-8">
 //             <h2 className="text-2xl font-bold mb-6">Filter Bills</h2>
@@ -352,7 +350,6 @@
 //           </div>
 //         )}
 
-//         {/* STEP 2 - WITH GST % */}
 //         {step === 2 && (
 //           <div className="bg-white rounded-lg shadow-md p-8">
 //             <div className="flex justify-between items-center mb-6">
@@ -364,7 +361,6 @@
 //               <p className="font-semibold text-blue-900">Showing {filteredData.length} UID(s) for Bill: {formData.rccBillNo}</p>
 //             </div>
 
-//             {/* आपका पूरा Global Inputs section - 100% same */}
 //             <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-lg mb-8">
 //               <h3 className="font-bold text-yellow-900 mb-4">Global Inputs</h3>
 //               <div className="grid md:grid-cols-4 gap-6">
@@ -372,22 +368,33 @@
 //                   <label className="block text-sm font-medium">Rcc_Summary_Sheet_No *</label>
 //                   <input type="text" value={globalFiles.rccSummarySheetNo} onChange={e => setGlobalFiles(prev => ({ ...prev, rccSummarySheetNo: e.target.value }))} className="w-full mt-1 p-2 border rounded" placeholder="RCC-001" />
 //                 </div>
+
+//                 {/* RCC SUMMARY SHEET - IMAGE + PDF */}
 //                 <div className="space-y-3">
-//                   <label className="block text-sm font-medium text-gray-700">Rcc_Summary_Sheet_Photo *</label>
+//                   <label className="block text-sm font-medium text-gray-700">Rcc_Summary_Sheet_Photo * (Image/PDF)</label>
 //                   <label className={`flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-xl cursor-pointer transition-all ${globalFiles.rccSummarySheetFile ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-indigo-400'}`}>
-//                     {!globalFiles.rccSummarySheetFile ? (
+//                     {globalFiles.rccSummarySheetFile ? (
+//                       <div className="p-4 text-center w-full">
+//                         {globalFiles.rccSummarySheetFile.type === 'application/pdf' ? (
+//                           <div className="flex flex-col items-center">
+//                             <FileText className="text-red-600 mb-2" size={40} />
+//                             <p className="text-xs text-red-700 font-medium truncate block max-w-xs">{globalFiles.rccSummarySheetFile.name}</p>
+//                           </div>
+//                         ) : (
+//                           <>
+//                             <img src={globalFiles.rccSummarySheetUrl} alt="Preview" className="mx-auto max-h-24 rounded-lg shadow-md object-cover" />
+//                             <p className="mt-2 text-xs text-green-700 font-medium truncate block">{globalFiles.rccSummarySheetFile.name}</p>
+//                           </>
+//                         )}
+//                       </div>
+//                     ) : (
 //                       <div className="text-center p-6">
 //                         <Upload className="mx-auto mb-3 text-gray-400" size={40} />
 //                         <p className="text-sm text-gray-600">Click to upload</p>
-//                         <p className="text-xs text-gray-500">or drag & drop</p>
-//                       </div>
-//                     ) : (
-//                       <div className="p-4 text-center">
-//                         <img src={globalFiles.rccSummarySheetUrl} alt="RCC Preview" className="mx-auto max-h-24 rounded-lg shadow-md object-cover" />
-//                         <p className="mt-2 text-xs text-green-700 font-medium truncate block">{globalFiles.rccSummarySheetFile.name}</p>
+//                         <p className="text-xs text-gray-500">Image or PDF</p>
 //                       </div>
 //                     )}
-//                     <input type="file" accept="image/*" onChange={e => e.target.files[0] && handleFile(e.target.files[0], 'rcc')} className="hidden" />
+//                     <input type="file" accept="image/*,.pdf" onChange={e => e.target.files[0] && handleFile(e.target.files[0], 'rcc')} className="hidden" />
 //                   </label>
 //                   {globalFiles.rccSummarySheetFile && (
 //                     <div className="flex items-center justify-between bg-green-100 border border-green-300 rounded-lg p-2 text-xs">
@@ -396,23 +403,33 @@
 //                     </div>
 //                   )}
 //                 </div>
-//                 {/* Work Order and Status - same as yours */}
+
+//                 {/* WORK ORDER - IMAGE + PDF */}
 //                 <div className="space-y-3">
-//                   <label className="block text-sm font-medium text-gray-700">Work Order *</label>
+//                   <label className="block text-sm font-medium text-gray-700">Work Order * (Image/PDF)</label>
 //                   <label className={`flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-xl cursor-pointer transition-all ${globalFiles.workOrderFile ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-indigo-400'}`}>
-//                     {!globalFiles.workOrderFile ? (
+//                     {globalFiles.workOrderFile ? (
+//                       <div className="p-4 text-center w-full">
+//                         {globalFiles.workOrderFile.type === 'application/pdf' ? (
+//                           <div className="flex flex-col items-center">
+//                             <FileText className="text-red-600 mb-2" size={40} />
+//                             <p className="text-xs text-red-700 font-medium truncate block max-w-xs">{globalFiles.workOrderFile.name}</p>
+//                           </div>
+//                         ) : (
+//                           <>
+//                             <img src={globalFiles.workOrderUrl} alt="Preview" className="mx-auto max-h-24 rounded-lg shadow-md object-cover" />
+//                             <p className="mt-2 text-xs text-green-700 font-medium truncate block">{globalFiles.workOrderFile.name}</p>
+//                           </>
+//                         )}
+//                       </div>
+//                     ) : (
 //                       <div className="text-center p-6">
 //                         <Upload className="mx-auto mb-3 text-gray-400" size={40} />
 //                         <p className="text-sm text-gray-600">Click to upload</p>
-//                         <p className="text-xs text-gray-500">or drag & drop</p>
-//                       </div>
-//                     ) : (
-//                       <div className="p-4 text-center">
-//                         <img src={globalFiles.workOrderUrl} alt="Work Order Preview" className="mx-auto max-h-24 rounded-lg shadow-md object-cover" />
-//                         <p className="mt-2 text-xs text-green-700 font-medium truncate block">{globalFiles.workOrderFile.name}</p>
+//                         <p className="text-xs text-gray-500">Image or PDF</p>
 //                       </div>
 //                     )}
-//                     <input type="file" accept="image/*" onChange={e => e.target.files[0] && handleFile(e.target.files[0], 'wo')} className="hidden" />
+//                     <input type="file" accept="image/*,.pdf" onChange={e => e.target.files[0] && handleFile(e.target.files[0], 'wo')} className="hidden" />
 //                   </label>
 //                   {globalFiles.workOrderFile && (
 //                     <div className="flex items-center justify-between bg-green-100 border border-green-300 rounded-lg p-2 text-xs">
@@ -421,6 +438,7 @@
 //                     </div>
 //                   )}
 //                 </div>
+
 //                 <div>
 //                   <label className="block text-sm font-medium">Status *</label>
 //                   <select value={globalStatus} onChange={e => setGlobalStatus(e.target.value)} className="w-full mt-1 p-2 border rounded">
@@ -432,7 +450,6 @@
 //               </div>
 //             </div>
 
-//             {/* Table with GST % */}
 //             <div className="overflow-x-auto">
 //               <table className="w-full text-xs border-collapse">
 //                 <thead className="bg-gray-50">
@@ -742,6 +759,14 @@ const Bill_Checked_By_Office = () => {
     }
   };
 
+  // TOTAL NET AMOUNT CALCULATION
+  const totalNetAmount = useMemo(() => {
+    return filteredData.reduce((sum, item) => {
+      const net = parseFloat(editableData[item.UID]?.NET_AMOUNT3 || 0);
+      return sum + (isNaN(net) ? 0 : net);
+    }, 0);
+  }, [filteredData, editableData]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
@@ -869,7 +894,6 @@ const Bill_Checked_By_Office = () => {
                   <input type="text" value={globalFiles.rccSummarySheetNo} onChange={e => setGlobalFiles(prev => ({ ...prev, rccSummarySheetNo: e.target.value }))} className="w-full mt-1 p-2 border rounded" placeholder="RCC-001" />
                 </div>
 
-                {/* RCC SUMMARY SHEET - IMAGE + PDF */}
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700">Rcc_Summary_Sheet_Photo * (Image/PDF)</label>
                   <label className={`flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-xl cursor-pointer transition-all ${globalFiles.rccSummarySheetFile ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-indigo-400'}`}>
@@ -904,7 +928,6 @@ const Bill_Checked_By_Office = () => {
                   )}
                 </div>
 
-                {/* WORK ORDER - IMAGE + PDF */}
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700">Work Order * (Image/PDF)</label>
                   <label className={`flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-xl cursor-pointer transition-all ${globalFiles.workOrderFile ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-indigo-400'}`}>
@@ -995,16 +1018,31 @@ const Bill_Checked_By_Office = () => {
                         <td className="p-2 border bg-orange-50 text-right">{row.SGST3 || '0.00'}</td>
                         <td className="p-2 text-right font-bold text-green-600 border bg-green-50">{row.NET_AMOUNT3 || '0.00'}</td>
                       </tr>
-                    );
-                  })}
+  );
+  })}
                 </tbody>
+
+                {/* GRAND TOTAL ROW */}
+                <tfoot>
+                  <tr className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-bold">
+                    <td colSpan={11} className="p-4 text-right text-lg">
+                      कुल नेट राशि (Total Net Amount):
+                    </td>
+                    <td className="p-4 text-right text-2xl font-extrabold">
+                      ₹ {totalNetAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 
-            <div className="flex justify-end mt-6">
-              <button onClick={handleSubmitData} disabled={isSaving || !globalFiles.rccSummarySheetNo || !globalFiles.rccSummarySheetFile || !globalFiles.workOrderFile || !globalStatus}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg disabled:opacity-50 flex items-center gap-2">
-                {isSaving ? 'Saving...' : `Submit All ${filteredData.length} UID(s)`}
+            <div className="flex justify-end mt-8">
+              <button 
+                onClick={handleSubmitData} 
+                disabled={isSaving || !globalFiles.rccSummarySheetNo || !globalFiles.rccSummarySheetFile || !globalFiles.workOrderFile || !globalStatus}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-lg disabled:opacity-50 flex items-center gap-3 text-lg shadow-lg"
+              >
+                {isSaving ? <>Saving... <Loader2 className="animate-spin" /></> : `Submit All ${filteredData.length} UID(s)`}
               </button>
             </div>
           </div>

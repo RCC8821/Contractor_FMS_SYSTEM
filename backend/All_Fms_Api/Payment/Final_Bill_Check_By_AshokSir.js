@@ -1,14 +1,14 @@
-const express = require('express');
-const { sheets, spreadsheetId } = require('../../config/googleSheet');
+const express = require("express");
+const { sheets, spreadsheetId } = require("../../config/googleSheet");
 const router = express.Router();
 
 // NEW API NAME: Payment_final_bill_Checked
-router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
+router.get("/Payment_final_bill_Checked_AshokSir", async (req, res) => {
   try {
     // Range: A7:AB → 28 columns (A=1, AB=28)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AI',
+      range: "Contractor_Payment_FMS!A7:AS",
     });
 
     let rows = response.data.values || [];
@@ -19,80 +19,79 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
     }
 
     const filteredData = rows
-      .filter(row => {
+      .filter((row) => {
         // Row में कम से कम 28 कॉलम्स होने चाहिए (A to AB)
         // if (row.length < 28) return false;
 
-        const planned6 = (row[33] || '').toString().trim();  // Column AA → PLANNED_6
-        const actual6  = (row[34] || '').toString().trim();  // Column AB → ACTUAL_6
+        const planned7 = (row[39] || "").toString().trim(); // Column AA → PLANNED_6
+        const actual7 = (row[40] || "").toString().trim(); // Column AB → ACTUAL_6
 
         // Filter: PLANNED_6 filled AND ACTUAL_6 empty
-        return planned6 !== '' && actual6 === '';
+        return planned7 !== "" && actual7 === "";
       })
-      .map(row => ({
-        rccBillNo: row[1] || '',
-        projectId: row[2] || '',
-        projectName: row[3] || '',
-        siteEngineer: row[4] || '',
-        contractorName: row[5] || '',
-        firmName: row[6] || '',
-        workName: row[7] || '',
-        contractorBillNo: row[8] || '',
-        billDate: row[9] || '',
-          billUrl: row[10] || '',
-          PreviousBillUrl: row[11] || '',
-          measurementSheetUrl: row[12] || '',
-          attendanceSheetUrl: row[13] || '',
-          rccSummarySheetNo: row[14] || '',
-          rccSummarySheetUrl: row[15] || '',
-           WorkOrderNo: row[16] || '',
-          workOrderUrl: row[17] || '',
-          WorkOrderValue: row[18] || '',
-          billAmount: row[19] || '',
-          NETAMOUNTCurrentAmount: row[25] || '',
-          PreviousBillAmount: row[26] || '',
-          UPToDatePaidAmount: row[27] || '',
-          BalanceAmount: row[28] || '',
-          remark: row[29] || '',    
-        planned6: row[33] || '',          
-        actual6: row[34] || ''            
+      .map((row) => ({
+        rccBillNo: row[1] || "",
+        projectId: row[2] || "",
+        projectName: row[3] || "",
+        siteEngineer: row[4] || "",
+        contractorName: row[5] || "",
+        firmName: row[6] || "",
+        workName: row[7] || "",
+        contractorBillNo: row[8] || "",
+        billDate: row[9] || "",
+        billUrl: row[10] || "",
+        PreviousBillUrl: row[11] || "",
+        measurementSheetUrl: row[12] || "",
+        attendanceSheetUrl: row[13] || "",
+        rccSummarySheetNo: row[14] || "",
+        rccSummarySheetUrl: row[15] || "",
+        WorkOrderNo: row[16] || "",
+        workOrderUrl: row[17] || "",
+        WorkOrderValue: row[18] || "",
+        billAmount: row[19] || "",
+        NETAMOUNTCurrentAmount: row[25] || "",
+        PreviousBillAmount: row[26] || "",
+        UPToDatePaidAmount: row[27] || "",
+        BalanceAmount: row[28] || "",
+        remark: row[29] || "",
+        planned7: row[33] || "",
+        actual7: row[34] || "",
       }));
 
     res.json({
       success: true,
-      message: 'Pending final bills fetched successfully',
+      message: "Pending final bills fetched successfully",
       count: filteredData.length,
-      data: filteredData
+      data: filteredData,
     });
-
   } catch (error) {
-    console.error('Error in /Payment_final_bill_Checked:', error.message);
+    console.error("Error in /Payment_final_bill_Checked:", error.message);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch data',
-      details: error.message
+      error: "Failed to fetch data",
+      details: error.message,
     });
   }
 });
 
 
-// Post-Final-Bill-Checked → FINAL SAFE VERSION (नवंबर 2025)
-router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
+
+router.post('/Post_Final_Bill_Checked_AshokSir', async (req, res) => {
   try {
     const {
       rccBillNo,
-      status6,
-      remark6
+      status7,
+      remark7
     } = req.body;
 
     if (!rccBillNo) {
       return res.status(400).json({ success: false, error: 'Rcc Bill No is required' });
     }
 
-    // 1. सिर्फ़ values पढ़ो (A7:AJ)
+    
     const valuesRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AL',
+      range: 'Contractor_Payment_FMS!A7:AR',
     });
 
     const rows = valuesRes.data.values || [];
@@ -121,8 +120,8 @@ router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
       }
     };
 
-    addUpdate('AJ', status6);              
-    addUpdate('AL', remark6);             
+    addUpdate('AP', status7);              
+    addUpdate('AR', remark7);             
 
     if (updates.length === 0) {
       return res.json({ success: true, message: 'No fields to update' });

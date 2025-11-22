@@ -86,7 +86,7 @@ const Login = () => {
   ));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-sky-800 to-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+<div className="min-h-screen bg-gradient-to-br from-slate-900 via-sky-800 to-slate-900 flex items-center justify-center px-4 py-0 fixed inset-0 overflow-hidden">
       <FloatingBlobs />
       <ParticleSpecks />
 
