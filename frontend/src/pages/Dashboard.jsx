@@ -54,6 +54,7 @@ const Dashboard = () => {
   }, [location.pathname]);
 
   // ============== ALL PAGES (Updated with Payment) ==============
+
   const allPages = [
     // FMS
     {
@@ -102,14 +103,21 @@ const Dashboard = () => {
     },
 
     {
-      id: "payment-request",
-      name: "Payment Request Form",
+      id: "BiLL_Checked_BY_RavindraSir",
+      name: "BiLL_Checked_BY_RavindraSir",
       icon: DollarSign,
-      path: "/dashboard/payment-request",
+      path: "/dashboard/BiLL_Checked_BY_RavindraSir",
       allowedUserTypes: ["admin"],
       category: "payment",
     },
-
+ {
+      id: "BiLL_Checked_BY_AshokSir",
+      name: "BiLL_Checked_BY_AshokSir",
+      icon: DollarSign,
+      path: "/dashboard/BiLL_Checked_BY_AshokSir",
+      allowedUserTypes: ["admin"],
+      category: "payment",
+    },
     
   ];
 

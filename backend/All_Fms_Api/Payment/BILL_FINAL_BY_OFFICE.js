@@ -1,13 +1,11 @@
 
-
-
-
 const express = require('express');
 const { sheets, spreadsheetId ,workSpredSheetId} = require('../../config/googleSheet');
 const router = express.Router();
 
 
-router.get('/Bill_Final_By_Office', async (req, res) => {
+
+router.get('/Done_Bills', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -19,91 +17,104 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    rows = rows.slice(1); // header skip
+    rows = rows.slice(1);
 
-    // Step 1: Saare "Done" wale bills ko alag se store kar lo (latest per Work Order)
-    const latestDoneMap = {};
+    const doneBills = rows
+      .filter(row => (row[30] || '').toString().trim() === 'Done')
+      .map(row => ({
+        rccBillNo: row[1] || '',
+        projectId: (row[2] || '').toString().trim(),
+        contractorName: (row[5] || '').toString().trim(),
+        firmName: (row[6] || '').toString().trim(),
+        workName: (row[7] || '').toString().trim(),
+        WorkOrderNo: (row[16] || '').toString().trim(),
+        UPToDatePaidAmount: row[27] || '0',
+        BalanceAmount: row[28] || '0',
+      }));
 
-    rows.forEach(row => {
-      const workOrder = (row[16] || '').toString().trim();
-      const status5 = (row[30] || '').toString().trim();
-
-      if (workOrder && status5 === 'Done') {
-        latestDoneMap[workOrder] = {
-          rccBillNo: row[1] || '',
-          projectId: row[2] || '',
-          projectName: row[3] || '',
-          siteEngineer: row[4] || '',
-          contractorName: row[5] || '',
-          firmName: row[6] || '',
-          workName: row[7] || '',
-          contractorBillNo: row[8] || '',
-          billDate: row[9] || '',
-          billUrl: row[10] || '',
-          PreviousBillUrl: row[11] || '',
-          measurementSheetUrl: row[12] || '',
-          attendanceSheetUrl: row[13] || '',
-          rccSummarySheetNo: row[14] || '',
-          rccSummarySheetUrl: row[15] || '',
-          WorkOrderNo: workOrder,
-          workOrderUrl: row[17] || '',
-          WorkOrderValue: row[18] || '',
-          billAmount: row[19] || '',
-          NETAMOUNTCurrentAmount: row[25] || '',
-          PreviousBillAmount: row[26] || '',
-          UPToDatePaidAmount: row[27] || '',
-          BalanceAmount: row[28] || '',
-          remark: row[29] || '',
-          status5: status5
-        };
-      }
+    res.json({
+      success: true,
+      data: doneBills
     });
 
-    // Step 2: Sirf Pending Bills (Done nahi hai)
-    const filteredData = rows
-      .filter(row => {
-        const status5 = (row[30] || '').toString().trim();
-        return status5 !== 'Done';
-      })
-      .map(row => {
-        const workOrder = (row[16] || '').toString().trim();
+  } catch (error) {
+    console.error('Error in /Done_Bills:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch data' });
+  }
+});
 
-        return {
-          rccBillNo: row[1] || '',
-          projectId: row[2] || '',
-          projectName: row[3] || '',
-          siteEngineer: row[4] || '',
-          contractorName: row[5] || '',
-          firmName: row[6] || '',
-          workName: row[7] || '',
-          contractorBillNo: row[8] || '',
-          billDate: row[9] || '',
-          billUrl: row[10] || '',
-          PreviousBillUrl: row[11] || '',
-          measurementSheetUrl: row[12] || '',
-          attendanceSheetUrl: row[13] || '',
-          rccSummarySheetNo: row[14] || '',
-          rccSummarySheetUrl: row[15] || '',
-          WorkOrderNo: workOrder,
-          workOrderUrl: row[17] || '',
-          WorkOrderValue: row[18] || '',
-          billAmount: row[19] || '',
-          NETAMOUNTCurrentAmount: row[25] || '',
-          PreviousBillAmount: row[26] || '',
-          UPToDatePaidAmount: row[27] || '',
-          BalanceAmount: row[28] || '',
-          remark: row[29] || '',
-          status5: row[30] || '',
-          
-          // ← YEH NAYA ADD KIYA — Previous Done Bill
-          previousDoneBill: latestDoneMap[workOrder] || null
-        };
-      });
+router.get('/Bill_Final_By_Office', async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Contractor_Payment_FMS!A7:AE',
+    });
 
-    res.json({ 
-      success: true, 
-      totalPending: filteredData.length,
-      data: filteredData 
+    let rows = response.data.values || [];
+    if (rows.length <= 1) {
+      return res.json({ success: true, data: [], totalPending: 0 });
+    }
+
+    rows = rows.slice(1); // Header skip
+
+    // ✅ Parse all rows (Done + Pending dono)
+    const allBills = rows.map(row => ({
+      rccBillNo: row[1] || '',
+      projectId: (row[2] || '').toString().trim(),
+      projectName: (row[3] || '').toString().trim(),
+      siteEngineer: row[4] || '',
+      contractorName: (row[5] || '').toString().trim(),
+      firmName: (row[6] || '').toString().trim(),
+      workName: (row[7] || '').toString().trim(),
+      contractorBillNo: row[8] || '',
+      billDate: row[9] || '',
+      billUrl: row[10] || '',
+      PreviousBillUrl: row[11] || '',
+      measurementSheetUrl: row[12] || '',
+      attendanceSheetUrl: row[13] || '',
+      rccSummarySheetNo: row[14] || '',
+      rccSummarySheetUrl: row[15] || '',
+      WorkOrderNo: (row[16] || '').toString().trim(),
+      workOrderUrl: row[17] || '',
+      WorkOrderValue: row[18] || '',
+      billAmount: row[19] || '',
+      NETAMOUNTCurrentAmount: row[25] || '',
+      PreviousBillAmount: row[26] || '',
+      UPToDatePaidAmount: row[27] || '',
+      BalanceAmount: row[28] || '',
+      remark: row[29] || '',
+      status5: (row[30] || '').toString().trim(),
+    }));
+
+    // ✅ Separate Done and Pending bills
+    const doneBills = allBills.filter(bill => bill.status5 === 'Done');
+    const pendingBills = allBills.filter(bill => bill.status5 !== 'Done');
+
+    // ✅ Attach previous done bill to each pending bill
+    const billsWithPrevious = pendingBills.map(bill => {
+      const previousDoneBill = doneBills
+        .filter(done => 
+          done.projectId === bill.projectId &&
+          done.contractorName === bill.contractorName &&
+          done.firmName === bill.firmName &&
+          done.workName === bill.workName &&
+          done.WorkOrderNo === bill.WorkOrderNo
+        )
+        .sort((a, b) => {
+          // Latest done bill first (by RCC Bill No descending)
+          return b.rccBillNo.localeCompare(a.rccBillNo);
+        })[0]; // Get the latest match
+
+      return {
+        ...bill,
+        previousDoneBill: previousDoneBill || null
+      };
+    });
+
+    res.json({
+      success: true,
+      totalPending: billsWithPrevious.length,
+      data: billsWithPrevious
     });
 
   } catch (error) {
@@ -111,7 +122,6 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 });
-
 
 
 
@@ -289,6 +299,8 @@ router.get('/work-orders', async (req, res) => {
 });
 
 
-
 module.exports = router;
+
+
+
 

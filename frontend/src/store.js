@@ -7,6 +7,7 @@ import { billCheckedApi } from './features/billing/billCheckedSlice';
 import { billCheckedOfficeApi } from './features/billing/billCheckedOfficeSlice';
 // Payment 
 import {billFinalByOfficeApi} from './features/Payment/Bill_final_By_Office_Slice'
+import {billCheckedByRavindraSirApi} from './features/Payment/BiLL_Checked_BY_RavindraSir_Slice'
 
 export const store = configureStore({
   reducer: {
@@ -17,7 +18,7 @@ export const store = configureStore({
     [billCheckedOfficeApi.reducerPath]: billCheckedOfficeApi.reducer,
     //Payment 
     [billFinalByOfficeApi.reducerPath]: billFinalByOfficeApi.reducer,
-   
+     [billCheckedByRavindraSirApi.reducerPath]: billCheckedByRavindraSirApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -27,5 +28,6 @@ export const store = configureStore({
       .concat(billCheckedOfficeApi.middleware)
       ///Payment
       .concat(billFinalByOfficeApi.middleware)
+      .concat(billCheckedByRavindraSirApi.middleware)
    
 });

@@ -41,7 +41,8 @@ import Bill_Checked_By_Office from './components/Contractor_Billing/Bill_Checked
 
 
 import BILL_FINAL_BY_OFFICE from './components/Payment/BILL_FINAL_BY_OFFICE';
-
+import BiLL_Checked_BY_RavindraSir from './components/Payment/BiLL_Checked_BY_RavindraSir';
+import BiLL_Checked_BY_AshokSir from './components/Payment/BiLL_Checked_BY_AshokSir';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.auth);
@@ -66,7 +67,10 @@ const App = () => {
           <Route path="Bill_Checked" element={<Bill_Checked />} />
           <Route path="Bill_Checked_By_Office" element={<Bill_Checked_By_Office />} />
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///Payment
           <Route path='BILL_FINAL_BY_OFFICE' element={<BILL_FINAL_BY_OFFICE/>}/>
+          <Route path='BiLL_Checked_BY_RavindraSir' element={<BiLL_Checked_BY_RavindraSir/>}/>
+          <Route path='BiLL_Checked_BY_AshokSir' element={<BiLL_Checked_BY_AshokSir/>}/>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

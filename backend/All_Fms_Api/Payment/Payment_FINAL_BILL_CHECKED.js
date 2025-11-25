@@ -23,8 +23,8 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
         // Row में कम से कम 28 कॉलम्स होने चाहिए (A to AB)
         // if (row.length < 28) return false;
 
-        const planned6 = (row[33] || '').toString().trim();  // Column AA → PLANNED_6
-        const actual6  = (row[34] || '').toString().trim();  // Column AB → ACTUAL_6
+        const planned6 = (row[34] || '').toString().trim();  // Column AA → PLANNED_6
+        const actual6  = (row[35] || '').toString().trim();  // Column AB → ACTUAL_6
 
         // Filter: PLANNED_6 filled AND ACTUAL_6 empty
         return planned6 !== '' && actual6 === '';
@@ -54,8 +54,8 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
           UPToDatePaidAmount: row[27] || '',
           BalanceAmount: row[28] || '',
           remark: row[29] || '',    
-        planned6: row[33] || '',          
-        actual6: row[34] || ''            
+        planned6: row[34] || '',          
+        actual6: row[35] || ''            
       }));
 
     res.json({
@@ -121,8 +121,8 @@ router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
       }
     };
 
-    addUpdate('AJ', status6);              
-    addUpdate('AL', remark6);             
+    addUpdate('AK', status6);              
+    addUpdate('AM', remark6);             
 
     if (updates.length === 0) {
       return res.json({ success: true, message: 'No fields to update' });
