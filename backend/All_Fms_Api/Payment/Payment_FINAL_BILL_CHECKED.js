@@ -8,7 +8,7 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
     // Range: A7:AB → 28 columns (A=1, AB=28)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AI',
+      range: 'Contractor_Payment_FMS!A7:AJ',
     });
 
     let rows = response.data.values || [];
@@ -29,6 +29,7 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
         // Filter: PLANNED_6 filled AND ACTUAL_6 empty
         return planned6 !== '' && actual6 === '';
       })
+      //  .filter(row => row[34] && !row[35])
       .map(row => ({
         rccBillNo: row[1] || '',
         projectId: row[2] || '',

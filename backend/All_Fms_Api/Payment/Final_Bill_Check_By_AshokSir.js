@@ -53,7 +53,7 @@ router.get("/Payment_final_bill_Checked_AshokSir", async (req, res) => {
         PreviousBillAmount: row[26] || "",
         UPToDatePaidAmount: row[27] || "",
         BalanceAmount: row[28] || "",
-        remark: row[29] || "",
+        remark: row[38] || "",
         planned7: row[40] || "",
         actual7: row[41] || "",
       }));
@@ -91,7 +91,7 @@ router.post('/Post_Final_Bill_Checked_AshokSir', async (req, res) => {
     
     const valuesRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AR',
+      range: 'Contractor_Payment_FMS!A7:AS',
     });
 
     const rows = valuesRes.data.values || [];
