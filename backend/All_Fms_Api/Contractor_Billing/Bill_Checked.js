@@ -154,6 +154,7 @@ router.get('/enquiry-capture-Billing', async (req, res) => {
 /* -------------------------------------------------------------------------
    POST  /save-Bill-Checked
    ------------------------------------------------------------------------- */
+   
 router.post('/save-Bill-Checked', async (req, res) => {
   try {
     const {
@@ -174,9 +175,9 @@ router.post('/save-Bill-Checked', async (req, res) => {
     if (items.length !== uids.length) {
       return res.status(400).json({ success: false, error: 'uids & items count must match' });
     }
-    if (!status || !measurementSheetBase64) {
-      return res.status(400).json({ success: false, error: 'status & measurementSheetBase64 required' });
-    }
+    // if (!status ) {
+    //   return res.status(400).json({ success: false, error: 'status & measurementSheetBase64 required' });
+    // }
 
     // ────── UPLOAD GLOBAL FILES ──────
     const timestamp = Date.now();
@@ -297,5 +298,8 @@ router.post('/save-Bill-Checked', async (req, res) => {
     });
   }
 });
+
+
+
 
 module.exports = router;

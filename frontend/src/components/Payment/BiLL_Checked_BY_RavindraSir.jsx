@@ -13,6 +13,7 @@ const BILL_Checked_BY_RavindraSir = () => {
   const [selectedBill, setSelectedBill] = useState(null);
   const [status, setStatus] = useState("Done");
   const [remark, setRemark] = useState("");
+  const [quality, setQuality] = useState("");
 
   const formatAmount = (value) => {
     if (!value) return 0;
@@ -24,6 +25,7 @@ const BILL_Checked_BY_RavindraSir = () => {
     setSelectedBill(bill);
     setStatus(bill.ravindraStatus || "Done");
     setRemark(bill.ravindraRemark || "");
+    setQuality(bill.ravindraQuality || '');
     setIsModalOpen(true);
   };
 
@@ -32,6 +34,7 @@ const BILL_Checked_BY_RavindraSir = () => {
 
     const payload = {
       rccBillNo: selectedBill.rccBillNo,
+      quality: quality,
       status6: status,     // Column AK
       remark6: remark,     // Column AM
     };
@@ -172,6 +175,29 @@ const BILL_Checked_BY_RavindraSir = () => {
                   <X size={32} />
                 </button>
               </div>
+              
+                <div>
+                  <label className="block text-lg font-bold text-gray-700 mb-2">QUALITY_DEBIT_AMOUNT</label>
+                  <input
+                  type="number"
+                    value={quality}
+                    onChange={(e) => setQuality(e.target.value)}
+                    rows="5"
+                    placeholder="Enter Quality... "
+                    className="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300 resize-none text-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-lg font-bold text-gray-700 mb-2">Remark</label>
+                  <textarea
+                    value={remark}
+                    onChange={(e) => setRemark(e.target.value)}
+                    rows="5"
+                    placeholder="Enter remark..."
+                    className="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300 resize-none text-lg"
+                  />
+                </div>
 
               <div className="space-y-6">
                 <div>
@@ -184,17 +210,6 @@ const BILL_Checked_BY_RavindraSir = () => {
                     <option value="Done">Done</option>
                     <option value="Pending">Pending</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-lg font-bold text-gray-700 mb-2">Remark</label>
-                  <textarea
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    rows="5"
-                    placeholder="Enter remark..."
-                    className="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-300 resize-none text-lg"
-                  />
                 </div>
 
                 <div className="flex justify-end gap-4 pt-6">

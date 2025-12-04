@@ -8,7 +8,7 @@ router.get("/Payment_final_bill_Checked_AshokSir", async (req, res) => {
     // Range: A7:AB → 28 columns (A=1, AB=28)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Contractor_Payment_FMS!A7:AS",
+      range: "Contractor_Payment_FMS!A7:AT",
     });
 
     let rows = response.data.values || [];
@@ -23,8 +23,8 @@ router.get("/Payment_final_bill_Checked_AshokSir", async (req, res) => {
         // Row में कम से कम 28 कॉलम्स होने चाहिए (A to AB)
         // if (row.length < 28) return false;
 
-        const planned7 = (row[40] || "").toString().trim(); // Column AA → PLANNED_6
-        const actual7 = (row[41] || "").toString().trim(); // Column AB → ACTUAL_6
+        const planned7 = (row[41] || "").toString().trim(); // Column AA → PLANNED_6
+        const actual7 = (row[42] || "").toString().trim(); // Column AB → ACTUAL_6
 
         // Filter: PLANNED_6 filled AND ACTUAL_6 empty
         return planned7 !== "" && actual7 === "";
@@ -49,13 +49,13 @@ router.get("/Payment_final_bill_Checked_AshokSir", async (req, res) => {
         workOrderUrl: row[17] || "",
         WorkOrderValue: row[18] || "",
         billAmount: row[19] || "",
-        NETAMOUNTCurrentAmount: row[25] || "",
-        PreviousBillAmount: row[26] || "",
-        UPToDatePaidAmount: row[27] || "",
-        BalanceAmount: row[28] || "",
-        remark: row[38] || "",
-        planned7: row[40] || "",
-        actual7: row[41] || "",
+        NETAMOUNTCurrentAmount: row[26] || "",
+        PreviousBillAmount: row[27] || "",
+        UPToDatePaidAmount: row[28] || "",
+        BalanceAmount: row[29] || "",
+        remark: row[39] || "",
+        planned7: row[41] || "",
+        actual7: row[42] || "",
       }));
 
     res.json({
@@ -91,7 +91,7 @@ router.post('/Post_Final_Bill_Checked_AshokSir', async (req, res) => {
     
     const valuesRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AS',
+      range: 'Contractor_Payment_FMS!A7:AT',
     });
 
     const rows = valuesRes.data.values || [];
@@ -120,8 +120,8 @@ router.post('/Post_Final_Bill_Checked_AshokSir', async (req, res) => {
       }
     };
 
-    addUpdate('AQ', status7);              
-    addUpdate('AS', remark7);             
+    addUpdate('AR', status7);              
+    addUpdate('AT', remark7);             
 
     if (updates.length === 0) {
       return res.json({ success: true, message: 'No fields to update' });

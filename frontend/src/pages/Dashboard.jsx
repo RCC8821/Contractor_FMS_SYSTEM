@@ -118,6 +118,14 @@ const Dashboard = () => {
       allowedUserTypes: ["admin"],
       category: "payment",
     },
+    {
+      id: "Payment_Tally",
+      name: "Payment_Tally",
+      icon: DollarSign,
+      path: "/dashboard/Payment_Tally",
+      allowedUserTypes: ["admin"],
+      category: "payment",
+    },
     
   ];
 

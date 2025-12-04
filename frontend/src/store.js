@@ -9,7 +9,7 @@ import { billCheckedOfficeApi } from './features/billing/billCheckedOfficeSlice'
 import {billFinalByOfficeApi} from './features/Payment/Bill_final_By_Office_Slice'
 import { billCheckedByRavindraSirApi } from './features/Payment/BiLL_Checked_BY_RavindraSir_Slice';
 import {billCheckedByAshokSirApi} from './features/Payment/BiLL_Checked_BY_AshokSir_Slice'
-
+import  {paymentTallyApi}  from './features/Payment/Payment_Tally_Slice'
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -20,7 +20,10 @@ export const store = configureStore({
     //Payment 
     [billFinalByOfficeApi.reducerPath]: billFinalByOfficeApi.reducer,
     [billCheckedByRavindraSirApi.reducerPath]: billCheckedByRavindraSirApi.reducer,
-    [billCheckedByAshokSirApi.reducerPath]: billCheckedByAshokSirApi.reducer
+    [billCheckedByAshokSirApi.reducerPath]: billCheckedByAshokSirApi.reducer,
+    [paymentTallyApi.reducerPath]: paymentTallyApi.reducer,
+    
+
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -31,6 +34,7 @@ export const store = configureStore({
       ///Payment
       .concat(billFinalByOfficeApi.middleware)
       .concat(billCheckedByRavindraSirApi.middleware)
-      .concat(billCheckedByAshokSirApi.middleware),
+      .concat(billCheckedByAshokSirApi.middleware)
+      .concat(paymentTallyApi.middleware)
    
 });

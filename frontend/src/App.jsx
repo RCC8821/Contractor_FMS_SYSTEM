@@ -1,29 +1,4 @@
-// import { BrowserRouter, Routes, Route } from 'react-router-dom';
-// import Login from './pages/Login';
-// import Dashboard from './pages/Dashboard';
-// import ContractorRequirementForm from './components/Contractor/ContractorRequirementForm';
-// import NotFound from './pages/NotFound'; // Assuming you have a NotFound component
 
-// const App = () => {
-//   return (
-//     <BrowserRouter>
-//       <Routes>
-//         <Route path="/" element={<Login />} />
-//         <Route path="/dashboard" element={<Dashboard />}>
-//           <Route path="Contractor-Requirement-Form" element={<ContractorRequirementForm />} />
-//         </Route>
-//         <Route path="*" element={<NotFound />} />
-//       </Routes>
-//     </BrowserRouter>
-//   );
-// };
-
-// export default App;
-
-
-
-
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -39,10 +14,10 @@ import Bill_Checked_By_Office from './components/Contractor_Billing/Bill_Checked
 
 ////////  Payment 
 
-
 import BILL_FINAL_BY_OFFICE from './components/Payment/BILL_FINAL_BY_OFFICE';
 import BiLL_Checked_BY_RavindraSir from './components/Payment/BiLL_Checked_BY_RavindraSir';
 import BiLL_Checked_BY_AshokSir from './components/Payment/BiLL_Checked_BY_AshokSir';
+import Payment_Tally from './components/Payment/Payment_Tally';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.auth);
@@ -66,11 +41,13 @@ const App = () => {
           <Route path="Bill_Tally_form" element={<Bill_Tally_form />} />
           <Route path="Bill_Checked" element={<Bill_Checked />} />
           <Route path="Bill_Checked_By_Office" element={<Bill_Checked_By_Office />} />
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   ///Payment
           <Route path='BILL_FINAL_BY_OFFICE' element={<BILL_FINAL_BY_OFFICE/>}/>
           <Route path='BiLL_Checked_BY_RavindraSir' element={<BiLL_Checked_BY_RavindraSir/>}/>
           <Route path='BiLL_Checked_BY_AshokSir' element={<BiLL_Checked_BY_AshokSir/>}/>
+          <Route path='Payment_Tally' element={<Payment_Tally/>}/>
+
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

@@ -8,7 +8,7 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
     // Range: A7:AB → 28 columns (A=1, AB=28)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AJ',
+      range: 'Contractor_Payment_FMS!A7:AK',
     });
 
     let rows = response.data.values || [];
@@ -20,11 +20,10 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
 
     const filteredData = rows
       .filter(row => {
-        // Row में कम से कम 28 कॉलम्स होने चाहिए (A to AB)
-        // if (row.length < 28) return false;
 
-        const planned6 = (row[34] || '').toString().trim();  // Column AA → PLANNED_6
-        const actual6  = (row[35] || '').toString().trim();  // Column AB → ACTUAL_6
+
+        const planned6 = (row[35] || '').toString().trim();  // Column AA → PLANNED_6
+        const actual6  = (row[36] || '').toString().trim();  // Column AB → ACTUAL_6
 
         // Filter: PLANNED_6 filled AND ACTUAL_6 empty
         return planned6 !== '' && actual6 === '';
@@ -50,13 +49,13 @@ router.get('/Payment_final_bill_Checked_RavinderSir', async (req, res) => {
           workOrderUrl: row[17] || '',
           WorkOrderValue: row[18] || '',
           billAmount: row[19] || '',
-          NETAMOUNTCurrentAmount: row[25] || '',
-          PreviousBillAmount: row[26] || '',
-          UPToDatePaidAmount: row[27] || '',
-          BalanceAmount: row[28] || '',
-          remark: row[29] || '',    
-        planned6: row[34] || '',          
-        actual6: row[35] || ''            
+          NETAMOUNTCurrentAmount: row[26] || '',
+          PreviousBillAmount: row[27] || '',
+          UPToDatePaidAmount: row[28] || '',
+          BalanceAmount: row[29] || '',
+          remark: row[30] || '',    
+        planned6: row[35] || '',          
+        actual6: row[36] || ''            
       }));
 
     res.json({
@@ -82,6 +81,7 @@ router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
   try {
     const {
       rccBillNo,
+      quality,
       status6,
       remark6
     } = req.body;
@@ -93,7 +93,7 @@ router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
     // 1. सिर्फ़ values पढ़ो (A7:AJ)
     const valuesRes = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Payment_FMS!A7:AL',
+      range: 'Contractor_Payment_FMS!A7:AO',
     });
 
     const rows = valuesRes.data.values || [];
@@ -122,8 +122,9 @@ router.post('/Post-Final-Bill-Checked-RavinderSir', async (req, res) => {
       }
     };
 
-    addUpdate('AK', status6);              
-    addUpdate('AM', remark6);             
+    addUpdate('AL', status6);              
+    addUpdate('AN', remark6); 
+    addUpdate('AO',quality)            
 
     if (updates.length === 0) {
       return res.json({ success: true, message: 'No fields to update' });

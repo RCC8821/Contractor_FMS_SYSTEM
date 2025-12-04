@@ -20,8 +20,10 @@ const Bill_Checked_Office = require('./All_Fms_Api/Contractor_Billing/Bill_Check
 const BILL_FINAL_BY_OFFICE = require('./All_Fms_Api/Payment/BILL_FINAL_BY_OFFICE');
 const Payment_final_bill_Checked = require('./All_Fms_Api/Payment/Payment_FINAL_BILL_CHECKED');
 const Final_bill_Checked_AshokSir = require('./All_Fms_Api/Payment/Final_Bill_Check_By_AshokSir')
-const app = express();
+const GetPayment = require('./All_Fms_Api/Payment/Payment')
 
+
+const app = express();
 // 1. CORS (Pehle daalo)
 app.use(cors({
   origin: process.env.CLIENT_URL || '*', // Ya 'http://localhost:3000'
@@ -66,6 +68,7 @@ app.use('/api', Bill_Checked_Office);
 app.use('/api', BILL_FINAL_BY_OFFICE);
 app.use('/api',Payment_final_bill_Checked)
 app.use('/api',Final_bill_Checked_AshokSir)
+app.use('/api',GetPayment)
 // 7. Health Check
 app.get('/', (req, res) => {
   res.json({ message: 'FMS Backend Running!', time: new Date().toISOString() });
