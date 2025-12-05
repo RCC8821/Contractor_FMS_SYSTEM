@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { Pencil, X, Search } from "lucide-react";
 import {
@@ -417,9 +416,9 @@ const BILL_FINAL_BY_OFFICE = () => {
       workOrderNo: workOrderNo,
       workOrderUrl: workOrderUrl,
       workOrderValue: workOrderValue,
-      debitAmount: "0",
-      materialDebitAmount5: "0",
-      sdAmount5: "0",
+      debitAmount: "",
+      materialDebitAmount5: "",
+      sdAmount5: "",
       gstPercent: "0",
       cgst: "0.00",
       sgst: "0.00",
@@ -439,63 +438,71 @@ const BILL_FINAL_BY_OFFICE = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ UPDATED: Auto-calculation for amounts - SD aur Material Debit ka netAmount par effect
-  useEffect(() => {
-    if (!selectedBill) return;
-    
-    const billAmount = formatAmount(selectedBill.billAmount);
-    const gstRate = parseFloat(formData.gstPercent) || 0;
+useEffect(() => {
+  if (!selectedBill) return;
 
-    // ✅ Step 1: GST calculation on bill amount
-    const gstAmount = (billAmount * gstRate) / 100;
-    const cgst = gstAmount / 2;
-    const sgst = gstAmount / 2;
-    
-    // ✅ Step 2: Debit amount subtract from bill
-    const debit = parseFloat(formData.debitAmount) || 0;
-    const actualAmount = billAmount - debit;
-    
-    // ✅ Step 3: Add GST to actual amount
-    const amountWithGST = actualAmount + gstAmount;
-    
-    // ✅ Step 4: Subtract SD and Material Debit for netAmount
-    const sd = parseFloat(formData.sdAmount5) || 0;
-    const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
-    const finalNet = amountWithGST - sd - materialDebit;
+  const billAmount = formatAmount(selectedBill.billAmount);
+  const gstRate = parseFloat(formData.gstPercent) || 0;
 
-    // ✅ Step 5: UP_To_Date_Paid_Amount_5 calculation (Previous + Bill Amount + GST)
-    const previousBillAmount = parseFloat(String(formData.previousBillAmount).replace(/,/g, "")) || 0;
-    const currentBillWithGST = billAmount + gstAmount; // SD/Material Debit ka effect nahi
-    const upToDatePaidAmount = (previousBillAmount + currentBillWithGST).toFixed(2);
+  // 1. GST on Original Bill
+  const gstOnBill = (billAmount * gstRate) / 100;
+  const cgst = gstOnBill / 2;
+  const sgst = gstOnBill / 2;
 
-    // ✅ Step 6: Balance Amount calculation
-    let balanceAmount = "0";
-    if (formData.workOrderValue && formData.workOrderValue !== "0" && formData.contractorName) {
-      const workOrderValueStr = String(formData.workOrderValue).replace(/[^0-9.-]/g, "");
-      const workOrderValue = parseFloat(workOrderValueStr) || 0;
-      balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(2);
-    }
+  // 2. Debit Amount (yeh sirf bill se kata jaayega)
+  const debitAmount = parseFloat(formData.debitAmount) || 0;
 
-    // Update form data
-    setFormData((prev) => ({
-      ...prev,
-      cgst: cgst.toFixed(2),
-      sgst: sgst.toFixed(2),
-      netAmount: finalNet.toFixed(2), // ✅ SD aur Material Debit subtract hua
-      upToDatePaidAmount: upToDatePaidAmount, // ✅ SD/Material Debit ka effect nahi
-      balanceAmount: balanceAmount,
-    }));
-  }, [
-    formData.sdAmount5,
-    formData.debitAmount,
-    formData.materialDebitAmount5,
-    formData.gstPercent,
-    formData.workOrderValue,
-    formData.previousBillAmount,
-    formData.contractorName,
-    selectedBill,
-  ]);
+  // 3. Actual Amount after Debit (for display & net calculation)
+  const actualAmount = billAmount - debitAmount;
 
+  // 4. Net Amount after SD & Material Debit
+  const sd = parseFloat(formData.sdAmount5) || 0;
+  const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
+  const amountWithGst = actualAmount + gstOnBill;
+  const finalNetAmount = amountWithGst - sd - materialDebit;
+
+  // ———————————————————————————————————————
+  // UP TO DATE PAID AMOUNT — SIRF YEHI ADD HOGA
+  // ———————————————————————————————————————
+  const previousPaid = parseFloat(String(formData.previousBillAmount).replace(/,/g, "") || "0");
+
+  // Base: Previous + Current Bill + GST on Bill
+  let upToDatePaidAmount = previousPaid + billAmount + gstOnBill;
+
+  // Sirf Debit Amount ka GST add karo (full debit nahi!)
+  if (gstRate > 0 && debitAmount > 0) {
+    const gstOnDebit = (debitAmount * gstRate) / 100;  // ← Sirf yeh add hoga
+    upToDatePaidAmount += gstOnDebit;
+  }
+
+  upToDatePaidAmount = upToDatePaidAmount.toFixed(2);
+
+  // Balance Amount
+  let balanceAmount = "0";
+  if (formData.workOrderValue && formData.workOrderValue !== "0" && formData.contractorName) {
+    const workOrderValue = formatAmount(formData.workOrderValue);
+    balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(2);
+  }
+
+  // Update FormData
+  setFormData(prev => ({
+    ...prev,
+    cgst: cgst.toFixed(2),
+    sgst: sgst.toFixed(2),
+    netAmount: finalNetAmount.toFixed(2),
+    upToDatePaidAmount: upToDatePaidAmount,
+    balanceAmount: balanceAmount,
+  }));
+}, [
+  formData.sdAmount5,
+  formData.debitAmount,
+  formData.materialDebitAmount5,
+  formData.gstPercent,
+  formData.workOrderValue,
+  formData.previousBillAmount,
+  formData.contractorName,
+  selectedBill,
+]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
