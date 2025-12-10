@@ -72,7 +72,7 @@ const Dashboard = () => {
       name: "Bill Entry Form",
       icon: Receipt,
       path: "/dashboard/Bill_Tally_form",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin" ,"Aakash Chouhan"],
       category: "billing",
     },
     {
@@ -80,7 +80,7 @@ const Dashboard = () => {
       name: "Bill Checked by SITE ENGINEER",
       icon: FileText,
       path: "/dashboard/Bill_Checked",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin","Aakash Chouhan"],
       category: "billing",
     },
     {
@@ -88,7 +88,7 @@ const Dashboard = () => {
       name: "Bill Checked By Office",
       icon: FileText,
       path: "/dashboard/Bill_Checked_By_Office",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin","Aakash Chouhan"],
       category: "billing",
     },
     
@@ -98,7 +98,7 @@ const Dashboard = () => {
       name: "BILL FINAL BY OFFICE",
       icon: FileText,
       path: "/dashboard/BILL_FINAL_BY_OFFICE",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin","Aakash Chouhan",],
       category: "payment",
     },
 
@@ -123,7 +123,7 @@ const Dashboard = () => {
       name: "Payment_Tally",
       icon: DollarSign,
       path: "/dashboard/Payment_Tally",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin","Govind Ram Nagar"],
       category: "payment",
     },
     

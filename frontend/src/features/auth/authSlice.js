@@ -21,13 +21,8 @@ export const loginUser = createAsyncThunk(
       // Map backend userType to frontend
       const userTypeMap = {
         Admin: 'admin',
-        Anish: 'Anish',
         'Aakash Chouhan': 'Aakash Chouhan',
-        'Ravi Rajak': 'Ravi Rajak',
-        'Anjali Malviya': 'Anjali Malviya',
-        'Neha Masani': 'Neha Masani',
-        'Gourav Singh': 'Gourav Singh',
-        'Somesh Chadhar': 'Somesh Chadhar',
+        'Govind Ram Nagar':'Govind Ram Nagar'
       };
 
       const frontendUserType = userTypeMap[result.userType] || 'user';

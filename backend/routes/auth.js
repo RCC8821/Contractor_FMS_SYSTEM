@@ -31,7 +31,7 @@ router.post('/login', async (req, res) => {
     const userType = user[2]?.trim(); // Trim to remove whitespace
     console.log('userType:', userType); // Log userType
 
-    if (!['Admin', 'Anish', 'Aakash Chouhan', 'Ravi Rajak','Anjali Malviya','Neha Masani','Gourav Singh','Somesh Chadhar'].includes(userType)) {
+    if (!['Admin', 'Aakash Chouhan', 'Govind Ram Nagar'].includes(userType)) {
       return res.status(400).json({ error: 'Invalid user type' });
     }
 
