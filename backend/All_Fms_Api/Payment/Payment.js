@@ -121,7 +121,7 @@ router.get("/Get-Payment", async (req, res) => {
 });
 
 
-////////////////////////////////////////////////////////////////////
+
 
 router.post("/Update-Payment", async (req, res) => {
     try {
@@ -158,47 +158,70 @@ router.post("/Update-Payment", async (req, res) => {
         const paymentSheetAppendData = [];
         let missingBills = [];
 
-        // Debug log
-        console.log('Total bills to process:', paymentDataArray.length);
-        console.log('First bill data:', paymentDataArray[0]);
-
         for (const item of paymentDataArray) {
             const {
-                RccBillNo, Timestamp, Planned_8, Project_Name, Contractor_Name_5, Contractor_Firm_Name_5, Bill_Date_5,
-                ACTUAL_PAID_AMOUNT_8, // NEW: This will contain Bill Amount from frontend
+                RccBillNo, Timestamp, Planned_8, Project_Name, Contractor_Name_5, 
+                Contractor_Firm_Name_5, Bill_Date_5, hasPreviousData,
+                // FMS के लिए सभी values
+                tdsAmount8, payableAmount8, paidAmount8, balanceAmount8,
+                // Payment Sheet के लिए
                 PAID_AMOUNT_8,
-                GRAND_TOTAL_AMOUNT,   // Grand Total from frontend
-                tdsAmount8, payableAmount8, balanceAmount8, bankDetails8, paymentMode8, 
-                paymentDetails8, paymentDate8, status8
+                ACTUAL_PAID_AMOUNT_8, GRAND_TOTAL_AMOUNT,
+                bankDetails8, paymentMode8, paymentDetails8, paymentDate8, status8
             } = item;
-
-            console.log(`Processing bill ${RccBillNo}:`);
-            console.log('- ACTUAL_PAID_AMOUNT_8 (Bill Amount):', ACTUAL_PAID_AMOUNT_8);
-            console.log('- PAID_AMOUNT_8 (Total Paid):', PAID_AMOUNT_8);
-            console.log('- Grand Total:', GRAND_TOTAL_AMOUNT);
 
             const targetRow = rowMap.get(RccBillNo);
 
             if (targetRow) {
-                // Contractor_Payment_FMS में update
+                // Status हमेशा update करें
                 fmsUpdates.push({
-                    range: `Contractor_Payment_FMS!AX${targetRow}`, values: [[status8]]
+                    range: `Contractor_Payment_FMS!AX${targetRow}`,
+                    values: [[status8]]
                 });
-                fmsUpdates.push({
-                    range: `Contractor_Payment_FMS!BA${targetRow}`, values: [[tdsAmount8]]
-                });
-                fmsUpdates.push({
-                    range: `Contractor_Payment_FMS!BB${targetRow}`, values: [[payableAmount8]]
-                });
-                fmsUpdates.push({
-                    range: `Contractor_Payment_FMS!BC${targetRow}`, values: [[PAID_AMOUNT_8]] // Total Paid
-                });
-                fmsUpdates.push({
-                    range: `Contractor_Payment_FMS!BD${targetRow}`, values: [[balanceAmount8]]
-                });
+                
+                // IMPORTANT: Check करें कि यह bill previous data है या नहीं
+                if (hasPreviousData) {
+                    // Previous data है → सिर्फ PAID और BALANCE update करें
+                    console.log(`Bill ${RccBillNo} has previous data - only updating PAID and BALANCE`);
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BC${targetRow}`, // PAID_AMOUNT_8
+                        values: [[paidAmount8]]
+                    });
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BD${targetRow}`, // BALANCE_AMOUNT_8
+                        values: [[balanceAmount8]]
+                    });
+                    
+                    // TDS और PAYABLE को update नहीं करना
+                    console.log(`Skipping TDS and PAYABLE for ${RccBillNo} (has previous data)`);
+                } else {
+                    // New bill है → सभी columns update करें
+                    console.log(`Bill ${RccBillNo} is new - updating all columns`);
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BA${targetRow}`, // TDS_AMOUNT_8
+                        values: [[tdsAmount8]]
+                    });
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BB${targetRow}`, // PAYABLE_AMOUNT_8
+                        values: [[payableAmount8]]
+                    });
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BC${targetRow}`, // PAID_AMOUNT_8
+                        values: [[paidAmount8]]
+                    });
+                    
+                    fmsUpdates.push({
+                        range: `Contractor_Payment_FMS!BD${targetRow}`, // BALANCE_AMOUNT_8
+                        values: [[balanceAmount8]]
+                    });
+                }
 
-                // Payment_Sheet में data append (17 columns)
-                // Column order: A-Q (Q is 17th column for Grand Total)
+                // Payment_Sheet में पूरा data append करें
                 paymentSheetAppendData.push([
                     Timestamp,                    // A
                     Planned_8,                    // B
@@ -207,26 +230,27 @@ router.post("/Update-Payment", async (req, res) => {
                     Contractor_Firm_Name_5,       // E
                     RccBillNo,                    // F
                     Bill_Date_5,                  // G
-                    ACTUAL_PAID_AMOUNT_8,         // H - Bill Amount (not Current Paid)
+                    ACTUAL_PAID_AMOUNT_8,         // H
                     tdsAmount8,                   // I
                     payableAmount8,               // J
-                    PAID_AMOUNT_8,                // K - Total Paid
+                    PAID_AMOUNT_8,                // K
                     balanceAmount8,               // L
                     bankDetails8,                 // M
                     paymentMode8,                 // N
                     paymentDetails8,              // O
                     paymentDate8,                 // P
-                    GRAND_TOTAL_AMOUNT            // Q - Grand Total (same for all bills)
+                    GRAND_TOTAL_AMOUNT            // Q
                 ]);
             } else {
                 missingBills.push(RccBillNo);
             }
         }
 
-        // Debug logs
-        console.log('FMS Updates count:', fmsUpdates.length);
-        console.log('Payment Sheet rows:', paymentSheetAppendData.length);
-        console.log('First row for Payment Sheet:', paymentSheetAppendData[0]);
+        console.log('==================================');
+        console.log('FMS Update Summary:');
+        console.log(`Total bills: ${paymentDataArray.length}`);
+        console.log(`FMS updates: ${fmsUpdates.length}`);
+        console.log('==================================');
 
         // Batch Update FMS
         if (fmsUpdates.length > 0) {
@@ -237,14 +261,14 @@ router.post("/Update-Payment", async (req, res) => {
                     data: fmsUpdates
                 }
             });
-            console.log('FMS updated successfully');
+            console.log('FMS updated with conditional logic');
         }
 
         // Append to Payment_Sheet
         if (paymentSheetAppendData.length > 0) {
             await sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: `Payment_Sheet!A:Q`, // Complete A to Q columns
+                range: `Payment_Sheet!A:Q`,
                 valueInputOption: 'USER_ENTERED',
                 insertDataOption: 'INSERT_ROWS',
                 resource: { 
@@ -258,7 +282,7 @@ router.post("/Update-Payment", async (req, res) => {
         res.json({
             success: true,
             message: `Payment processed successfully! Grand Total: ₹${paymentDataArray[0]?.GRAND_TOTAL_AMOUNT || 0}`,
-            updatedInFMS: fmsUpdates.length / 5,
+            updatedInFMS: fmsUpdates.length,
             addedToPaymentSheet: paymentSheetAppendData.length,
             grandTotal: paymentDataArray[0]?.GRAND_TOTAL_AMOUNT || 0,
             missingBills
@@ -274,7 +298,6 @@ router.post("/Update-Payment", async (req, res) => {
     }
 });
 
-//////////////////////////////////////////////////////////////
 
 module.exports = router;
 
@@ -283,7 +306,6 @@ module.exports = router;
 
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 

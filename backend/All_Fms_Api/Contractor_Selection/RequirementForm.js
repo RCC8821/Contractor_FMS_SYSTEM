@@ -1,6 +1,6 @@
 // routes/contractor.js
 const express = require('express');
-const { sheets, spreadsheetId } = require('../config/googleSheet');
+const { sheets, spreadsheetId } = require('../../config/googleSheet');
 
 const router = express.Router();
 
@@ -31,21 +31,40 @@ router.get('/enquiry-capture', async (req, res) => {
         while (padded.length < 11) padded.push('');
 
         const contractorDone = padded[10]?.toString().trim();
+        // Filters out rows that are marked as 'Done' by the contractor
         if (contractorDone !== '') return null;
 
         const obj = {};
+        // 1. Map all data based on sheet headers
         headers.forEach((h, i) => {
           obj[h] = padded[i]?.toString().trim() || '';
         });
 
-        // FORCE: Ensure Project_ID exists
-        if (!obj['Project_ID'] && obj['Project ID']) {
-          obj['Project_ID'] = obj['Project ID'];
+        // 2. CRITICAL FIX: Explicitly ensure Project_ID exists 
+        // (Assuming Project ID is always in Column B, Index 1)
+        const potentialProjectIdValue = padded[1]?.toString().trim();
+        
+        if (potentialProjectIdValue) {
+            obj['Project_ID'] = potentialProjectIdValue;
+        } 
+        // Keep original fallback for Project ID vs Project_ID consistency
+        else if (obj['Project ID']) {
+             obj['Project_ID'] = obj['Project ID'];
+        }
+
+
+        // Ensure the Project_ID field is never empty if a row is returned
+        if (!obj['Project_ID']) {
+            // If we reach here, and there is no ID, we usually skip this row, 
+            // but since the frontend expects non-empty IDs, we keep the data row only if ID exists.
+            if (!potentialProjectIdValue) {
+                return null;
+            }
         }
 
         return obj;
       })
-      .filter(Boolean);
+      .filter(Boolean); // Filter out rows that returned null (empty Contractor Done or missing Project ID)
 
     res.json({
       totalRows: filteredData.length,
@@ -56,10 +75,6 @@ router.get('/enquiry-capture', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch data' });
   }
 })
-
-
-
-
 
 // POST: Submit Contractor Requirement to HTML_FORM sheet (NO req_no)
 router.post('/submit-contractor', async (req, res) => {
@@ -129,8 +144,5 @@ router.post('/submit-contractor', async (req, res) => {
     });
   }
 });
-
-
-
 
 module.exports = router;

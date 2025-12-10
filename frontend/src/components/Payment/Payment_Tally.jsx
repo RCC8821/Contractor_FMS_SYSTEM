@@ -352,76 +352,83 @@ const Payment_Tally = () => {
         }, 0);
     }, [selectedBillIds, calculatedBillsData]);
 
-    const handleSubmitAll = async () => {
-        if (!globalPaymentData.BANK_DETAILS_8 || !globalPaymentData.PAYMENT_MODE_8 || !globalPaymentData.PAYMENT_DATE_8) {
-            alert("Please fill all Global Payment Details (Bank, Mode, Date)");
-            return;
-        }
+   const handleSubmitAll = async () => {
+    if (!globalPaymentData.BANK_DETAILS_8 || !globalPaymentData.PAYMENT_MODE_8 || !globalPaymentData.PAYMENT_DATE_8) {
+        alert("Please fill all Global Payment Details (Bank, Mode, Date)");
+        return;
+    }
 
-        const timestamp = new Date().toLocaleString("en-IN", {
-            day: "2-digit", month: "2-digit", year: "numeric",
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
-        });
+    const timestamp = new Date().toLocaleString("en-IN", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
+    });
 
-        const grandTotalValue = grandTotalCurrentPaidAmount;
+    const grandTotalValue = grandTotalCurrentPaidAmount;
 
-        const payload = selectedBillIds.map(billId => {
-            const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
-            const inputs = billInputData[billId] || {};
-            const calc = calculatedBillsData[billId] || {};
+    const payload = selectedBillIds.map(billId => {
+        const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
+        const inputs = billInputData[billId] || {};
+        const calc = calculatedBillsData[billId] || {};
 
-            const actualPaidAmount8 = calc.billAmount || 0;
+        // Check if this specific bill has previous data
+        const hasAnyPreviousData = calc.latestPaid > 0 || calc.latestTDS > 0 || calc.latestBalance > 0;
+        
+        // Payment_Sheet के लिए PAID_AMOUNT_8 का value
+        const paidForPaymentSheet = hasAnyPreviousData ? 
+            calc.payableAmount || 0 : 
+            calc.totalPaid || 0;
+
+        return {
+            RccBillNo: bill.rccBillNo,
+            Timestamp: timestamp,
+            Planned_8: bill.planned7 || "",
+            Project_Name: bill.projectName,
+            Contractor_Name_5: bill.contractorName,
+            Contractor_Firm_Name_5: bill.firmName,
+            Bill_Date_5: bill.billDate,
+
+            // Previous data (for reference)
+            latestPaidAmount8: calc.latestPaid || 0,
+            latestBalanceAmount8: calc.latestBalance || 0,
+            latestTDSAmount8: calc.latestTDS || 0,
             
-            // NEW: PAID_AMOUNT_8 का value
-            // अगर previous data है तो Payable Amount भेजें
-            // अगर previous data नहीं है तो Total Paid Amount भेजें
-            const paidAmount8 = calc.paidAmount8Value || 0;
+            // IMPORTANT: ये सभी values भेजें, backend decide करेगा क्या update करना है
+            // FMS के लिए सभी values भेजें
+            tdsAmount8: calc.tdsAmount || 0,           // TDS amount
+            payableAmount8: calc.payableAmount || 0,   // Payable amount
+            paidAmount8: (calc.latestPaid || 0) + (calc.currentPaidAmount || 0), // Previous + Current Paid
+            balanceAmount8: calc.balanceAmount || 0,   // New balance
+            
+            // Payment_Sheet के लिए
+            PAID_AMOUNT_8: paidForPaymentSheet,       // Payment Sheet के लिए value
+            
+            ACTUAL_PAID_AMOUNT_8: calc.billAmount || 0,
+            GRAND_TOTAL_AMOUNT: grandTotalValue,
 
-            return {
-                RccBillNo: bill.rccBillNo,
-                Timestamp: timestamp,
-                Planned_8: bill.planned7 || "",
-                Project_Name: bill.projectName,
-                Contractor_Name_5: bill.contractorName,
-                Contractor_Firm_Name_5: bill.firmName,
-                Bill_Date_5: bill.billDate,
+            bankDetails8: globalPaymentData.BANK_DETAILS_8,
+            paymentMode8: globalPaymentData.PAYMENT_MODE_8,
+            paymentDetails8: globalPaymentData.PAYMENT_DETAILS_8 || "",
+            paymentDate8: globalPaymentData.PAYMENT_DATE_8,
+            status8: "Done",
+            
+            // IMPORTANT: इस specific bill के लिए previous data है या नहीं
+            hasPreviousData: hasAnyPreviousData
+        };
+    });
 
-                latestPaidAmount8: calc.latestPaid || 0,
-                latestBalanceAmount8: calc.latestBalance || 0,
-                latestTDSAmount8: calc.latestTDS || 0,
-                
-                tdsAmount8: calc.tdsAmount || 0,
-                currentPaidAmount8: calc.currentPaidAmount || 0,
-                payableAmount8: calc.payableAmount || 0,
-                totalPaidAmount8: calc.totalPaid || 0,
-                balanceAmount8: calc.balanceAmount || 0,
-                
-                ACTUAL_PAID_AMOUNT_8: actualPaidAmount8,
-                PAID_AMOUNT_8: paidAmount8, // NEW: यहाँ change है
-                GRAND_TOTAL_AMOUNT: grandTotalValue,
+    console.log('Payload sample:', payload[0]);
+    console.log('Bill has previous data:', payload[0]?.hasPreviousData);
 
-                bankDetails8: globalPaymentData.BANK_DETAILS_8,
-                paymentMode8: globalPaymentData.PAYMENT_MODE_8,
-                paymentDetails8: globalPaymentData.PAYMENT_DETAILS_8 || "",
-                paymentDate8: globalPaymentData.PAYMENT_DATE_8,
-                status8: "Done"
-            };
-        });
-
-        console.log('Payload sample:', payload[0]);
-        console.log('PAID_AMOUNT_8 value:', payload[0]?.PAID_AMOUNT_8);
-
-        try {
-            await updatePayments(payload).unwrap();
-            alert(`Success! ${payload.length} bills processed successfully!\nGrand Total: ₹${grandTotalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
-            handleClearFilter();
-            refetch();
-        } catch (err) {
-            console.error("Submit failed:", err);
-            alert("Failed: " + (err?.data?.error || "Please try again"));
-        }
-    };
-
+    try {
+        await updatePayments(payload).unwrap();
+        alert(`Success! ${payload.length} bills processed successfully!\nGrand Total: ₹${grandTotalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
+        handleClearFilter();
+        refetch();
+    } catch (err) {
+        console.error("Submit failed:", err);
+        alert("Failed: " + (err?.data?.error || "Please try again"));
+    }
+};
     return (
         <div className="min-h-screen bg-gray-100 pt-8 px-2 md:px-6 pb-20">
             {isLoading && (
@@ -676,71 +683,7 @@ const Payment_Tally = () => {
                                                         </button>
                                                     </div>
                                                     
-                                                    <div className="mt-4 text-xs text-gray-600 bg-white p-3 rounded-lg border">
-                                                        <div className="font-bold mb-1">Calculation Logic:</div>
-                                                        
-                                                        {hasPreviousBalance ? (
-                                                            <>
-                                                                <div className="text-green-600 font-semibold">✓ Previous Balance exists</div>
-                                                                <div>Payable Amount = Previous Balance (₹{formatAmount(bill.latestBalanceAmount8).toLocaleString("en-IN")})</div>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <div>Payable Amount = Bill Amount (₹{formatAmount(bill.billAmount).toLocaleString("en-IN")}) - TDS Amount</div>
-                                                            </>
-                                                        )}
-                                                        
-                                                        <div>Total Paid = Previous Paid (₹{formatAmount(bill.latestPaidAmount8).toLocaleString("en-IN")}) + Current Paid (₹{formatAmount(billCalculations.currentPaidAmount || 0).toLocaleString("en-IN")})</div>
-                                                        
-                                                        <div className="mt-2 font-bold">New Balance Calculation:</div>
-                                                        <div>Balance = Bill Amount - (Total Paid + TDS Amount)</div>
-                                                        <div>Balance = Bill Amount - (Previous Paid + Current Paid + TDS Amount)</div>
-                                                        
-                                                        <div className="mt-2 text-red-600 font-semibold">
-                                                            ⚡ AUTOMATIC ZERO CONDITION:
-                                                        </div>
-                                                        <div className="ml-2">
-                                                            If <span className="font-bold">Previous Paid + Current Paid + Latest TDS = Bill Amount</span>
-                                                        </div>
-                                                        <div className="ml-2">
-                                                            Then <span className="font-bold text-green-600">New Balance = 0 (automatically)</span>
-                                                        </div>
-                                                        
-                                                        <div className="mt-2 text-blue-600 font-semibold">
-                                                            ⭐ PAID_AMOUNT_8 RULE:
-                                                        </div>
-                                                        <div className="ml-2">
-                                                            {hasAnyPreviousData ? (
-                                                                <span className="font-bold text-green-600">Previous Data Exists → PAID_AMOUNT_8 = Payable Amount</span>
-                                                            ) : (
-                                                                <span className="font-bold text-blue-600">New Bill → PAID_AMOUNT_8 = Total Paid Amount</span>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        {hasPreviousTDS && (
-                                                            <div className="mt-2 text-purple-600 font-semibold">
-                                                                ⓘ TDS Amount is 0 because previous TDS (₹{formatAmount(bill.latestTDSAmount8).toLocaleString("en-IN")}) already exists
-                                                            </div>
-                                                        )}
-                                                        
-                                                        <div className="mt-2 text-blue-600 font-semibold">
-                                                            Note: Bill Amount (₹{formatAmount(bill.billAmount).toLocaleString("en-IN")}) will be saved as ACTUAL_PAID_AMOUNT_8 in Payment_Sheet ONLY
-                                                        </div>
-                                                        <div className="text-green-600 font-semibold">
-                                                            Note: Grand Total (₹{grandTotalCurrentPaidAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}) will be saved in Q column for all selected bills
-                                                        </div>
-                                                        
-                                                        {billCalculations.balanceAmount === 0 && (
-                                                            <div className="mt-2 text-green-600 font-semibold">
-                                                                ✓ Balance is ZERO! All payments settled
-                                                            </div>
-                                                        )}
-                                                        {billCalculations.balanceAmount < 0 && (
-                                                            <div className="mt-2 text-red-600 font-semibold">
-                                                                ⚠ Warning: Overpayment! Total amounts exceed Bill Amount
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    
                                                 </div>
                                             )}
                                         </div>

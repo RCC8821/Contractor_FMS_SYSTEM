@@ -12,8 +12,9 @@ export const apiSlice = createApi({
       transformResponse: (response) => {
         const rows = response.data || [];
 
+        // Correctly accessing 'Project_ID'
         const ids = rows
-          .map(row => row.Porject_ID) // ← YEH HAI GALTI THI
+          .map(row => row.Project_ID) 
           .filter(id => id && id.toString().trim() !== '')
           .map(id => id.toString().trim())
           .filter((v, i, a) => a.indexOf(v) === i)
@@ -29,7 +30,8 @@ export const apiSlice = createApi({
       transformResponse: (response, meta, arg) => {
         const projectId = arg?.toString().trim();
         const rows = response.data || [];
-        return rows.find(r => r.Porject_ID?.toString().trim() === projectId) || null;
+        // Correctly comparing with 'Project_ID'
+        return rows.find(r => r.Project_ID?.toString().trim() === projectId) || null;
       },
     }),
 
