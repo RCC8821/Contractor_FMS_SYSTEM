@@ -1,7 +1,12 @@
 // src/app/store.js
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './features/auth/authSlice';
+////Contractor selections 
 import { apiSlice } from './features/api/apiSlice';
+import {approvalForMeetingApi} from './features/api/Approval_For_Meeting_Slice'
+import {firstMeetingAttendApi} from './features/api/first_Meeting_Attend_slice'
+import {meetingMomApi} from './features/api/Meeting_Mom_Slice'
+/////billing
 import { billTallyApi } from './features/billing/billTallySlice';
 import { billCheckedApi } from './features/billing/billCheckedSlice';
 import { billCheckedOfficeApi } from './features/billing/billCheckedOfficeSlice';
@@ -14,6 +19,10 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     [apiSlice.reducerPath]: apiSlice.reducer,
+    [approvalForMeetingApi.reducerPath]: approvalForMeetingApi.reducer,
+    [firstMeetingAttendApi.reducerPath]: firstMeetingAttendApi.reducer,
+    [meetingMomApi.reducerPath]: meetingMomApi.reducer,
+    ///billing
     [billTallyApi.reducerPath]: billTallyApi.reducer,
     [billCheckedApi.reducerPath]: billCheckedApi.reducer,
     [billCheckedOfficeApi.reducerPath]: billCheckedOfficeApi.reducer,
@@ -28,6 +37,10 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .concat(apiSlice.middleware)
+      .concat(approvalForMeetingApi.middleware)
+      .concat(firstMeetingAttendApi.middleware)
+      .concat(meetingMomApi.middleware)
+      ///billing
       .concat(billTallyApi.middleware)
       .concat(billCheckedApi.middleware)
       .concat(billCheckedOfficeApi.middleware)

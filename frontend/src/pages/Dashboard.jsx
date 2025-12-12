@@ -66,6 +66,33 @@ const Dashboard = () => {
       category: "fms",
     },
 
+     {
+      id: "Approval_For_Meeting",
+      name: "Approval_For_Meeting",
+      icon: FileText,
+      path: "/dashboard/Approval_For_Meeting",
+      allowedUserTypes: ["admin"],
+      category: "fms",
+    },
+
+    {
+      id: "First_Meeting_Attend",
+      name: "First_Meeting_Attend",
+      icon: FileText,
+      path: "/dashboard/First_Meeting_Attend",
+      allowedUserTypes: ["admin"],
+      category: "fms",
+    },
+
+      {
+      id: "Meeting_Mom",
+      name: "Meeting_Mom",
+      icon: FileText,
+      path: "/dashboard/Meeting_Mom",
+      allowedUserTypes: ["admin"],
+      category: "fms",
+    },
+
     // BILLING
     {
       id: "Bill_Tally_form",
@@ -143,7 +170,7 @@ const Dashboard = () => {
   const menuItems = [
     {
       id: "fms",
-      name: "Contractor FMS",
+      name: "Contractor Selection",
       icon: ShoppingCart,
       pages: fmsPages,
       gradient: "from-blue-500 to-cyan-500",

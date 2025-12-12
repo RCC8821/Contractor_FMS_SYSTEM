@@ -162,7 +162,7 @@ const Payment_Tally = () => {
         PAYMENT_DATE_8: "",
     });
 
-    const bankOptions = ["SVC Bank", "HDFC Bank"];
+    const bankOptions = ["SVC Main A/C(202)","SVC VENDER PAY A/C(328)", "HDFC Bank"];
     const modeOptions = ["Cheque", "NEFT", "RTGS"];
 
     // Sync Firm Name
