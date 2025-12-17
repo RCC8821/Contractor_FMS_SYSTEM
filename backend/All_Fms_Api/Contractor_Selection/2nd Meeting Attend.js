@@ -1,14 +1,11 @@
-// File: Contractor_Selection/Approval_For_Meeting.js (ya jahan bhi hai)
+
 
 const express = require('express');
 const { sheets, drive, spreadsheetId } = require('../../config/googleSheet');
 const { Readable } = require('stream');
 const router = express.Router();
 
-// =======================================================
-// GOOGLE DRIVE UPLOAD FUNCTION – SABSE UPAR (ZAROORI)
-// =======================================================
-// UNIVERSAL UPLOAD – PDF, JPG, PNG, DOCX, ZIP — Sab Chalega!
+
 async function uploadToGoogleDrive(base64Data, fileName) {
   if (!base64Data || typeof base64Data !== 'string') return '';
 
@@ -61,11 +58,11 @@ async function uploadToGoogleDrive(base64Data, fileName) {
 // =======================================================
 // GET /Get_Meeting_Mom → Pending MOM wale records
 // =======================================================
-router.get('/Get_Meeting_Mom', async (req, res) => {
+router.get('/Get_Second_Meeting_Attend', async (req, res) => {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Selection_FMS!A7:AG',
+      range: 'Contractor_Selection_FMS!A7:AW',
     });
 
     let data = response.data.values || [];
@@ -77,9 +74,9 @@ router.get('/Get_Meeting_Mom', async (req, res) => {
     data = data.slice(1);
 
     const filteredData = data
-      .filter(row => row[31]?.toString().trim() && !row[32]?.toString().trim()) // planned5 hai, actual5 nahi
+      .filter(row => row[41]?.toString().trim() && !row[42]?.toString().trim()) // planned5 hai, actual5 nahi
       .map(row => ({
-        planned5: row[31] || '',
+        planned6: row[41] || '',
         uid: row[17] || '',           
         projectId: row[1] || '',
         clientName1: row[2] || '',
@@ -90,114 +87,127 @@ router.get('/Get_Meeting_Mom', async (req, res) => {
         contractorName2: row[12] || '',
         contractorContactNo2: row[13] || '',
         contractorType2: row[14] || '',
-        actual5: row[32] || '',
+        actual6: row[42] || '',
         MeetingScheduleSlot_3: row[21] || '',
         Doer_Name_3: row[22] || '',
         Doer_Name_4: row[28] || '',
-        remark4: row[30] || '',
+        MeetingLocation:row[34] || '',
+        MomPdf5:row[36] || '',
+        GstCertificate5:row[37] || '',
+        BasicTurnOver5:row[38] || '',
+        NoOfProject5:row[39] || '',
+        NextMeetingSchedule5: row[40] || '',
+      
       }));
 
     res.json({ success: true, data: filteredData });
   } catch (error) {
-    console.error('GET /Get_Meeting_Mom Error:', error);
+    console.error('GET /Get_Second_Meeting_Attend Error:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch MOM data' });
   }
 });
 
-
-router.post('/Post_Meeting_Mom', async (req, res) => {
+router.post('/Post_Second_Meeting_Attend', async (req, res) => {
   try {
     const {
       uid,
-      status5 = '',
-      meetingLocation5 = '',
-      nextMeetingSchedule5 = '',
-      basicTurnover5 = '',
-      noOfProjects5 = '',
-      momPdfBase64,
-      gstCertificateBase64
+      status6 = '',
+      DoerName_6 = '',
+      momPdfBase64
     } = req.body;
 
     // Validation
-    if (!uid) return res.status(400).json({ success: false, error: 'UID is required' });
-    if (!momPdfBase64) return res.status(400).json({ success: false, error: 'MOM PDF is required' });
+    if (!uid || !momPdfBase64) {
+      return res.status(400).json({
+        success: false,
+        error: !uid ? 'UID is required' : 'MOM PDF (base64) is required'
+      });
+    }
 
-    const trimmedUid = uid.toString().trim();
+    const inputUid = uid.toString().trim(); // जैसे "0001"
     const timestamp = Date.now();
 
-    // Upload PDFs
-    const [momPdfUrl, gstCertUrl] = await Promise.all([
-      uploadToGoogleDrive(momPdfBase64, `MOM_${trimmedUid}_${timestamp}.pdf`),
-      gstCertificateBase64
-        ? uploadToGoogleDrive(gstCertificateBase64, `GST_${trimmedUid}_${timestamp}.pdf`)
-        : Promise.resolve('')
-    ]);
-
+    // Upload PDF to Google Drive
+    const momPdfUrl = await uploadToGoogleDrive(momPdfBase64, `MOM_${inputUid}_${timestamp}.pdf`);
     if (!momPdfUrl) {
       return res.status(500).json({ success: false, error: 'Failed to upload MOM PDF' });
     }
 
-    // Find row by UID (UID column S hai → index 17)
+    // Fetch data from sheet (A8 से शुरू)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Contractor_Selection_FMS!A8:AO',
+      range: 'Contractor_Selection_FMS!A8:AT1000', // AT तक काफी है
     });
 
     const rows = response.data.values || [];
     let targetRow = -1;
 
+    // Column R = index 17 (A=0, B=1, ..., R=17)
     for (let i = 0; i < rows.length; i++) {
-      const cellValue = rows[i][17]; // ← Column S (planned3) jahan UID hai
-      if (cellValue && cellValue.toString().trim() === trimmedUid) {
-        targetRow = i + 8;
+      const cellValue = rows[i][17]; // Column R
+
+      if (!cellValue) continue;
+
+      let sheetUid = cellValue.toString().trim();
+
+      // अगर number है तो leading zeros लगा दो (4 digit format में)
+      if (!isNaN(sheetUid) && sheetUid !== '') {
+        sheetUid = sheetUid.padStart(4, '0'); // 1 → "0001", 23 → "0023"
+      }
+
+      // Extra spaces/invisible chars हटाओ
+      sheetUid = sheetUid.replace(/\s/g, '');
+
+      // Match करो
+      if (sheetUid === inputUid) {
+        targetRow = i + 8; // क्योंकि data A8 से शुरू होता है
         break;
       }
     }
 
+    // अगर UID नहीं मिला
     if (targetRow === -1) {
       return res.status(404).json({
         success: false,
-        error: 'UID not found in sheet',
-        receivedUid: trimmedUid
+        error: 'UID not found in Column R',
+        receivedUid: inputUid,
+        suggestion: "Make sure UID in Column R is exactly like 0001, 0002 etc."
       });
     }
 
-    // Update columns AH to AO
+    // Update AR, AS, AT columns
     const values = [[
-      status5,              // AH
-      meetingLocation5,     // AI
-      '',                   // AJ
-      momPdfUrl,            // AK - MOM_PDF_5
-      gstCertUrl || '',     // AL - GST_Certificate_5
-      basicTurnover5,       // AM
-      noOfProjects5,        // AN
-      nextMeetingSchedule5  // AO
+      status6,         // AR → Status_6
+      DoerName_6,      // AS → Doer Name
+      momPdfUrl        // AT → MOM PDF Link
     ]];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Contractor_Selection_FMS!AH${targetRow}:AO${targetRow}`,
+      range: `Contractor_Selection_FMS!AR${targetRow}:AT${targetRow}`,
       valueInputOption: 'RAW',
       resource: { values },
     });
 
     return res.json({
       success: true,
-      message: 'MOM & GST saved successfully!',
-      updatedRow: targetRow,
-      uid: trimmedUid,
-      momPdfUrl,
-      gstCertificateUrl: gstCertUrl || null
+      message: 'Data saved successfully in row ' + targetRow,
+      row: targetRow,
+      uid: inputUid,
+      momPdfUrl: momPdfUrl,
+      status6: status6,
+      doer: DoerName_6
     });
 
   } catch (error) {
-    console.error('POST /Post_Meeting_Mom Error:', error);
+    console.error('Error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to save MOM data',
+      error: 'Server error',
       details: error.message
     });
   }
 });
+
 
 module.exports = router;

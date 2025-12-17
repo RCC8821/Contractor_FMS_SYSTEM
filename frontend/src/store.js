@@ -6,6 +6,7 @@ import { apiSlice } from './features/api/apiSlice';
 import {approvalForMeetingApi} from './features/api/Approval_For_Meeting_Slice'
 import {firstMeetingAttendApi} from './features/api/first_Meeting_Attend_slice'
 import {meetingMomApi} from './features/api/Meeting_Mom_Slice'
+import {secondMeetingAttendApi} from './features/api/Second_Meeting_Attend_Slice'
 /////billing
 import { billTallyApi } from './features/billing/billTallySlice';
 import { billCheckedApi } from './features/billing/billCheckedSlice';
@@ -22,6 +23,7 @@ export const store = configureStore({
     [approvalForMeetingApi.reducerPath]: approvalForMeetingApi.reducer,
     [firstMeetingAttendApi.reducerPath]: firstMeetingAttendApi.reducer,
     [meetingMomApi.reducerPath]: meetingMomApi.reducer,
+   [secondMeetingAttendApi.reducerPath]: secondMeetingAttendApi.reducer,
     ///billing
     [billTallyApi.reducerPath]: billTallyApi.reducer,
     [billCheckedApi.reducerPath]: billCheckedApi.reducer,
@@ -40,6 +42,7 @@ export const store = configureStore({
       .concat(approvalForMeetingApi.middleware)
       .concat(firstMeetingAttendApi.middleware)
       .concat(meetingMomApi.middleware)
+      .concat(secondMeetingAttendApi.middleware)
       ///billing
       .concat(billTallyApi.middleware)
       .concat(billCheckedApi.middleware)

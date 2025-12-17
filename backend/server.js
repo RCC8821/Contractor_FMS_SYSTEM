@@ -15,6 +15,7 @@ const RequirementForm = require('./All_Fms_Api/Contractor_Selection/RequirementF
 const Approval_For_Meeting = require("./All_Fms_Api/Contractor_Selection/Approval_For_Meeting")
 const First_Meeting_Attend = require ('./All_Fms_Api/Contractor_Selection/1st_Meeting_Attend')
 const Get_Meeting_Mom = require('./All_Fms_Api/Contractor_Selection/Meeting_Mom')
+const Second_Meeting_Attend=require('./All_Fms_Api/Contractor_Selection/2nd Meeting Attend')
 ////// billing APIs 
 const Bill_Tally_form = require('./All_Fms_Api/Contractor_Billing/Bill_Tally_form');
 const Bill_Checked = require('./All_Fms_Api/Contractor_Billing/Bill_Checked');
@@ -67,6 +68,7 @@ app.use('/api', RequirementForm);
 app.use('/api',Approval_For_Meeting)
 app.use('/api',First_Meeting_Attend)
 app.use('/api',Get_Meeting_Mom)
+app.use('/api',Second_Meeting_Attend)
 ////////// Billing 
 app.use('/api', Bill_Tally_form);
 app.use('/api', Bill_Checked);

@@ -24,7 +24,7 @@ const Meeting_Mom = () => {
   const [selectedMom, setSelectedMom] = useState(null);
 
   // Form fields
-  const [status5, setStatus5] = useState("Done");
+  const [status5, setStatus5] = useState(" ");
   const [meetingLocation5, setMeetingLocation5] = useState("");
   const [nextMeetingSchedule5, setNextMeetingSchedule5] = useState("");
   const [basicTurnover5, setBasicTurnover5] = useState("");
@@ -34,7 +34,7 @@ const Meeting_Mom = () => {
 
   const openModal = (mom) => {
     setSelectedMom(mom);
-    setStatus5("Done");
+    setStatus5(" ");
     setMeetingLocation5("");
     setNextMeetingSchedule5("");
     setBasicTurnover5("");
@@ -85,12 +85,12 @@ const Meeting_Mom = () => {
     <>
       <div className="min-h-screen bg-gray-50 pt-8 px-4 pb-20">
         {/* Header */}
-        <div className="max-w-full mx-auto mb-8 text-center">
+        {/* <div className="max-w-full mx-auto mb-8 text-center">
           <h1 className="text-4xl font-bold text-gray-800">Meeting MOM</h1>
           <p className="mt-2 text-lg text-gray-600">
             Submit MOM, GST Certificate & meeting details
           </p>
-        </div>
+        </div> */}
 
         {/* Table */}
         <div className="max-w-full mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-300">
@@ -266,8 +266,10 @@ const Meeting_Mom = () => {
                     onChange={(e) => setStatus5(e.target.value)}
                     className="w-full px-5 py-4 border-2 border-indigo-500 rounded-xl text-lg"
                   >
+                    <option value="Select">----- Select -----</option>
+
                     <option value="Done">Done</option>
-                    <option value="Pending">Pending</option>
+                    {/* <option value="Pending">Pending</option> */}
                   </select>
                 </div>
 

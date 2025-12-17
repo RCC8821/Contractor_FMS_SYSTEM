@@ -92,6 +92,15 @@ const Dashboard = () => {
       allowedUserTypes: ["admin"],
       category: "fms",
     },
+    
+      {
+      id: "Second_Meeting_Attend",
+      name: "Second_Meeting_Attend",
+      icon: FileText,
+      path: "/dashboard/Second_Meeting_Attend",
+      allowedUserTypes: ["admin"],
+      category: "fms",
+    },
 
     // BILLING
     {

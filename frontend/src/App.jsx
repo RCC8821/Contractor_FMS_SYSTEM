@@ -9,6 +9,7 @@ import ContractorRequirementForm from './components/Contractor/ContractorRequire
 import Approval_For_Meeting from './components/Contractor/Approval_For_Meeting';
 import First_Meeting_Attend from './components/Contractor/First_Meeting_Attend';
 import Meeting_Mom from './components/Contractor/Meeting_Mom';
+import Second_Meeting_Attend from './components/Contractor/Second_Meeting_Attend';
 // Billing 
 
 import Bill_Tally_form from "./components/Contractor_Billing/Bill_Tally_form"
@@ -22,6 +23,7 @@ import BILL_FINAL_BY_OFFICE from './components/Payment/BILL_FINAL_BY_OFFICE';
 import BiLL_Checked_BY_RavindraSir from './components/Payment/BiLL_Checked_BY_RavindraSir';
 import BiLL_Checked_BY_AshokSir from './components/Payment/BiLL_Checked_BY_AshokSir';
 import Payment_Tally from './components/Payment/Payment_Tally';
+
 
 
 
@@ -48,6 +50,7 @@ const App = () => {
           <Route path='Approval_For_Meeting' element={<Approval_For_Meeting/>}/>
           <Route path='First_Meeting_Attend' element={<First_Meeting_Attend/>}/>
           <Route path='Meeting_Mom' element={<Meeting_Mom/>}/>
+          <Route path='Second_Meeting_Attend' element={<Second_Meeting_Attend/>}/>
   //////Billing         
           <Route path="Bill_Tally_form" element={<Bill_Tally_form />} />
           <Route path="Bill_Checked" element={<Bill_Checked />} />
