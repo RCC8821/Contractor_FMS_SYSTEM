@@ -22,7 +22,9 @@ export const loginUser = createAsyncThunk(
       const userTypeMap = {
         Admin: 'admin',
         'Aakash Chouhan': 'Aakash Chouhan',
-        'Govind Ram Nagar':'Govind Ram Nagar'
+        'Govind Ram Nagar':'Govind Ram Nagar',
+        'Ashok Sir':'Ashok Sir',
+        'Ravindra Singh':'Ravindra Singh'
       };
 
       const frontendUserType = userTypeMap[result.userType] || 'user';

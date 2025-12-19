@@ -38,7 +38,7 @@ const BiLL_Checked_BY_AshokSir = () => {
 
     try {
       await updateStatus(payload).unwrap();
-      alert(`Bill ${selectedBill.rccBillNo} successfully checked by Ravindra Sir!`);
+      alert(`Bill ${selectedBill.rccBillNo} successfully checked by Ashok Sir!`);
       setIsModalOpen(false);
       refetch();
     } catch (err) {

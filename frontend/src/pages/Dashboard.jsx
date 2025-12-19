@@ -143,7 +143,7 @@ const Dashboard = () => {
       name: "BiLL_Checked_BY_RavindraSir",
       icon: DollarSign,
       path: "/dashboard/BiLL_Checked_BY_RavindraSir",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin",'Ravindra Singh'],
       category: "payment",
     },
  {
@@ -151,7 +151,7 @@ const Dashboard = () => {
       name: "BiLL_Checked_BY_AshokSir",
       icon: DollarSign,
       path: "/dashboard/BiLL_Checked_BY_AshokSir",
-      allowedUserTypes: ["admin"],
+      allowedUserTypes: ["admin" , "Ashok Sir"],
       category: "payment",
     },
     {

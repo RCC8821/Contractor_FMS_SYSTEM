@@ -86,7 +86,7 @@ router.get("/Get-Payment", async (req, res) => {
           // Latest payment details from Payment_Sheet
           latestPaidAmount8: latestPaidAmount,
           latestBalanceAmount8: latestBalanceAmount,
-          latestTDSAmount8: latestTDSAmount      // ← Now correct (Column I)
+          latestTDSAmount8: latestTDSAmount     
         };
       });
 
@@ -162,9 +162,7 @@ router.post("/Update-Payment", async (req, res) => {
             const {
                 RccBillNo, Timestamp, Planned_8, Project_Name, Contractor_Name_5, 
                 Contractor_Firm_Name_5, Bill_Date_5, hasPreviousData,
-                // FMS के लिए सभी values
                 tdsAmount8, payableAmount8, paidAmount8, balanceAmount8,
-                // Payment Sheet के लिए
                 PAID_AMOUNT_8,
                 ACTUAL_PAID_AMOUNT_8, GRAND_TOTAL_AMOUNT,
                 bankDetails8, paymentMode8, paymentDetails8, paymentDate8, status8
@@ -173,15 +171,15 @@ router.post("/Update-Payment", async (req, res) => {
             const targetRow = rowMap.get(RccBillNo);
 
             if (targetRow) {
-                // Status हमेशा update करें
+                
                 fmsUpdates.push({
                     range: `Contractor_Payment_FMS!AX${targetRow}`,
                     values: [[status8]]
                 });
                 
-                // IMPORTANT: Check करें कि यह bill previous data है या नहीं
+               
                 if (hasPreviousData) {
-                    // Previous data है → सिर्फ PAID और BALANCE update करें
+                    
                     console.log(`Bill ${RccBillNo} has previous data - only updating PAID and BALANCE`);
                     
                     fmsUpdates.push({
@@ -194,10 +192,10 @@ router.post("/Update-Payment", async (req, res) => {
                         values: [[balanceAmount8]]
                     });
                     
-                    // TDS और PAYABLE को update नहीं करना
+                   
                     console.log(`Skipping TDS and PAYABLE for ${RccBillNo} (has previous data)`);
                 } else {
-                    // New bill है → सभी columns update करें
+                    
                     console.log(`Bill ${RccBillNo} is new - updating all columns`);
                     
                     fmsUpdates.push({
@@ -221,7 +219,7 @@ router.post("/Update-Payment", async (req, res) => {
                     });
                 }
 
-                // Payment_Sheet में पूरा data append करें
+               
                 paymentSheetAppendData.push([
                     Timestamp,                    // A
                     Planned_8,                    // B

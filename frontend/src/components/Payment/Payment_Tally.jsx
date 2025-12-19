@@ -1,749 +1,529 @@
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { FaSearch, FaFilePdf, FaTimes, FaChevronDown, FaArrowDown } from 'react-icons/fa';
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useGetPendingPaymentsQuery, useUpdatePaymentsMutation } from "../../features/Payment/Payment_Tally_Slice";
-import { Search, X, CheckSquare, Square, FileText, ChevronDown } from "lucide-react";
+const Payment = () => {
+  const [allData, setAllData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showData, setShowData] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [siteSearch, setSiteSearch] = useState("");
+  const [showVendorList, setShowVendorList] = useState(false);
+  const [showSiteList, setShowSiteList] = useState(false);
+  const [selectedBills, setSelectedBills] = useState([]);
+  const [paidAmounts, setPaidAmounts] = useState({});
 
-// =================================================================
-// HELPER FUNCTIONS & COMPONENTS 
-// =================================================================
+  const [bankDetails, setBankDetails] = useState("");
+  const [paymentMode, setPaymentMode] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
 
-const formatAmount = (value) => {
-    if (value === null || value === undefined || value === "") return 0;
-    const num = parseFloat(String(value).replace(/[^0-9.]/g, ""));
-    return isNaN(num) ? 0 : num;
-};
+  const [submitting, setSubmitting] = useState(false);
 
-const PaymentInputComponent = ({
-    label,
-    id,
-    initialValue,
-    onValueChange,
-    color = "gray",
-    isDate = false,
-    isNumeric = true,
-    options = null,
-    readOnly = false,
-    placeholder = ""
-}) => {
-    const [localValue, setLocalValue] = useState(initialValue || "");
+  const vendorRef = useRef(null);
+  const siteRef = useRef(null);
+  const paymentSectionRef = useRef(null);
 
-    useEffect(() => {
-        if (initialValue !== localValue) {
-            setLocalValue(initialValue || "");
-        }
-    }, [initialValue]);
-
-    const handleChange = (e) => {
-        if (readOnly) return;
-        
-        let value = e.target.value;
-        let finalValue = value;
-
-        if (options === null && isNumeric) {
-            finalValue = value.replace(/[^0-9.]/g, '');
-        }
-
-        setLocalValue(finalValue);
-        if (options !== null) {
-            onValueChange(id, finalValue);
-        }
+  useEffect(() => {
+    fetchInitialData();
+    const handleClickOutside = (event) => {
+      if (vendorRef.current && !vendorRef.current.contains(event.target)) setShowVendorList(false);
+      if (siteRef.current && !siteRef.current.contains(event.target)) setShowSiteList(false);
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const handleBlur = () => {
-        if (readOnly) return;
-        
-        if (options === null) {
-            onValueChange(id, localValue);
-        }
-    };
+  const fetchInitialData = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/Payment');
+      if (response.data.success) {
+        const processedData = response.data.data.map(item => {
+          const parseAmount = (value) => {
+            if (!value) return 0;
+            const cleaned = value.toString().replace(/,/g, '').trim();
+            return cleaned === '' ? 0 : Number(cleaned);
+          };
 
-    const isDropdown = options !== null;
-    const inputStyle = `w-full text-lg font-semibold border-b-2 outline-none py-1 transition duration-150 
-        ${color === "blue" ? "border-blue-300 focus:border-blue-600 text-blue-700" : (color === "green" ? "border-green-300 focus:border-green-600 text-green-700" : "border-gray-300 focus:border-blue-500")}
-        ${isDropdown ? 'appearance-none' : ''}
-        ${readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}
-    `;
+          const netAmount = parseAmount(item.netAmount16 || item.netAmount17 || 0);
+          const latestPaid = parseAmount(item.latestPaidAmount || 0);
 
-    return (
-        <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm relative">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{label}</label>
-            {isDropdown ? (
-                <div className="relative">
-                    <select 
-                        className={`${inputStyle} h-10 bg-white`} 
-                        value={localValue} 
-                        onChange={handleChange}
-                        disabled={readOnly}
-                    >
-                        <option value="">-- Select --</option>
-                        {options.map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"/>
-                </div>
-            ) : (
-                <input
-                    type={isDate ? "date" : "text"}
-                    inputMode={isNumeric ? "decimal" : "text"}
-                    className={inputStyle}
-                    placeholder={placeholder || (isDate ? "" : (isNumeric ? "0.00" : "Enter detail"))}
-                    value={localValue}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    readOnly={readOnly}
-                />
-            )}
-        </div>
-    );
-};
-
-const PaymentInput = ({ label, value, color = "gray" }) => {
-    const displayValue = formatAmount(value).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-
-    const inputStyle = `w-full text-lg font-semibold border-b-2 outline-none py-1 transition duration-150 cursor-default
-        ${color === "green" ? "border-green-300 text-green-700 bg-gray-50" : "border-red-300 text-red-700 bg-gray-50"}`;
-
-    return (
-        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{label}</label>
-            <input type="text" className={inputStyle} value={displayValue} readOnly />
-        </div>
-    );
-};
-
-const InfoField = ({ label, value, isMoney = false, colorClass = "text-gray-800" }) => (
-    <div className="flex flex-col border-b border-gray-100 pb-1">
-        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{label}</span>
-        <span className={`text-sm font-medium ${colorClass} truncate`} title={isMoney ? `₹${formatAmount(value).toLocaleString("en-IN")}` : value || "-"}>
-            {isMoney ? `₹${formatAmount(value).toLocaleString("en-IN")}` : value || "-"}
-        </span>
-    </div>
-);
-
-const DocLink = ({ label, url }) => {
-    if (!url) return null;
-    return (
-        <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 border border-blue-200 transition">
-            <FileText size={12} /> {label}
-        </a>
-    );
-};
-
-// =================================================================
-// MAIN COMPONENT: Payment_Tally 
-// =================================================================
-
-const Payment_Tally = () => {
-    const { data: apiResponse = {}, isLoading, refetch } = useGetPendingPaymentsQuery();
-    const [updatePayments, { isLoading: isSubmitting, isSuccess, isError, error }] = useUpdatePaymentsMutation();
-
-    const globalPaymentRef = useRef(null);
-    const bills = apiResponse.data || [];
-    const uniqueContractors = apiResponse.uniqueContractors || [];
-
-    const [selectedContractor, setSelectedContractor] = useState("");
-    const [selectedFirm, setSelectedFirm] = useState("");
-    const [filteredBills, setFilteredBills] = useState([]);
-    const [showData, setShowData] = useState(false);
-
-    const [selectedBillIds, setSelectedBillIds] = useState([]);
-    const [billInputData, setBillInputData] = useState({});
-
-    const [paymentDetailsLabel, setPaymentDetailsLabel] = useState("PAYMENT DETAILS (8)");
-
-    const [globalPaymentData, setGlobalPaymentData] = useState({
-        BANK_DETAILS_8: "",
-        PAYMENT_MODE_8: "",
-        PAYMENT_DETAILS_8: "",
-        PAYMENT_DATE_8: "",
-    });
-
-    const bankOptions = ["SVC Main A/C(202)","SVC VENDER PAY A/C(328)", "HDFC Bank"];
-    const modeOptions = ["Cheque", "NEFT", "RTGS"];
-
-    // Sync Firm Name
-    useEffect(() => {
-        if (selectedContractor) {
-            const contractor = uniqueContractors.find((c) => c.contractorName === selectedContractor);
-            if (contractor) setSelectedFirm(contractor.firmName);
-        } else {
-            setSelectedFirm("");
-        }
-    }, [selectedContractor, uniqueContractors]);
-
-    // Dynamic Label for Payment Details
-    const handleGlobalInputChange = (field, value) => {
-        setGlobalPaymentData(prev => ({ ...prev, [field]: value }));
-
-        if (field === "PAYMENT_MODE_8") {
-            if (value === "Cheque") setPaymentDetailsLabel("CHEQUE NO.");
-            else if (value === "NEFT" || value === "RTGS") setPaymentDetailsLabel("UTR NO.");
-            else setPaymentDetailsLabel("PAYMENT DETAILS (8)");
-        }
-    };
-
-    const handleFetch = () => {
-        if (selectedContractor && selectedFirm) {
-            const filtered = bills.filter(b => b.contractorName === selectedContractor && b.firmName === selectedFirm);
-            setFilteredBills(filtered);
-            setShowData(true);
-            setSelectedBillIds([]);
-            setBillInputData({});
-        } else {
-            alert("Please select Contractor Name");
-        }
-    };
-
-    const handleClearFilter = () => {
-        setSelectedContractor("");
-        setSelectedFirm("");
-        setFilteredBills([]);
-        setShowData(false);
-        setSelectedBillIds([]);
-        setBillInputData({});
-        setGlobalPaymentData({ BANK_DETAILS_8: "", PAYMENT_MODE_8: "", PAYMENT_DETAILS_8: "", PAYMENT_DATE_8: "" });
-        setPaymentDetailsLabel("PAYMENT DETAILS (8)");
-    };
-
-    const getNumericValue = (billId, field) => formatAmount(billInputData[billId]?.[field]);
-
-    const toggleBillSelection = (billId) => {
-        if (selectedBillIds.includes(billId)) {
-            setSelectedBillIds(prev => prev.filter(id => id !== billId));
-            setBillInputData(prev => { const { [billId]: _, ...rest } = prev; return rest; });
-        } else {
-            setSelectedBillIds(prev => [...prev, billId]);
-            const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
-            const latestPaid = formatAmount(bill?.latestPaidAmount8 || 0);
-            const latestBalance = formatAmount(bill?.latestBalanceAmount8 || 0);
-            const latestTDS = formatAmount(bill?.latestTDSAmount8 || 0);
-            const billAmount = formatAmount(bill?.billAmount || 0);
-            
-            // NEW: अगर previous TDS है तो TDS input में 0 डालें
-            const tdsValue = latestTDS > 0 ? "0" : "";
-            
-            setBillInputData(prev => ({
-                ...prev,
-                [billId]: { 
-                    tds_amount_8: tdsValue,
-                    paid_amount_8: prev[billId]?.paid_amount_8 || "",
-                    latestPaidAmount8: latestPaid,
-                    latestBalanceAmount8: latestBalance,
-                    latestTDSAmount8: latestTDS,
-                    billAmount8: billAmount,
-                    hasPreviousTDS: latestTDS > 0,
-                    hasPreviousPayment: latestPaid > 0,
-                    hasPreviousBalance: latestBalance > 0,
-                    // NEW: Check if any previous data exists
-                    hasAnyPreviousData: latestPaid > 0 || latestTDS > 0 || latestBalance > 0
-                }
-            }));
-        }
-    };
-
-    const handleInputChange = (billId, field, value) => {
-        setBillInputData(prev => ({
-            ...prev,
-            [billId]: { ...prev[billId], [field]: value },
-        }));
-    };
-
-    const handleSaveAndScroll = (billId) => {
-        if (!selectedBillIds.includes(billId)) toggleBillSelection(billId);
-        globalPaymentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    const calculatedBillsData = useMemo(() => {
-        const data = {};
-        filteredBills.forEach(bill => {
-            const uniqueId = bill._id || bill.rccBillNo;
-            const billAmount = formatAmount(bill.billAmount);
-            const latestPaid = formatAmount(bill.latestPaidAmount8 || 0);
-            const latestBalance = formatAmount(bill.latestBalanceAmount8 || 0);
-            const latestTDS = formatAmount(bill.latestTDSAmount8 || 0);
-            const inputs = billInputData[uniqueId] || {};
-            
-            // Check if any previous data exists
-            const hasAnyPreviousData = latestPaid > 0 || latestTDS > 0 || latestBalance > 0;
-            
-            // TDS Amount: अगर previous TDS है तो 0, वरना input value
-            let tdsAmount = 0;
-            if (latestTDS > 0) {
-                tdsAmount = 0; // Previous TDS होने पर हमेशा 0
-            } else {
-                tdsAmount = getNumericValue(uniqueId, 'tds_amount_8');
-            }
-            
-            const currentPaidAmount = getNumericValue(uniqueId, 'paid_amount_8');
-            
-            // Payable Amount: अगर previous balance है तो previous balance, वरना (Bill Amount - TDS)
-            let payableAmount = 0;
-            if (latestBalance > 0) {
-                payableAmount = latestBalance; // Previous balance को payable amount मानें
-            } else {
-                payableAmount = billAmount - tdsAmount;
-            }
-            
-            // Total Paid = Latest Paid + Current Paid Amount
-            const totalPaid = latestPaid + currentPaidAmount;
-            
-            // NEW CORRECT BALANCE CALCULATION:
-            // Balance = Bill Amount - (Total Paid + TDS Amount)
-            // यानी: Balance = Bill Amount - (Previous Paid + Current Paid + TDS Amount)
-            let balanceAmount = billAmount - (totalPaid + tdsAmount);
-            
-            // NEW: AUTOMATIC ZERO CONDITION
-            // अगर Previous Paid + Current Paid + Latest TDS = Bill Amount
-            // तो Balance = 0
-            const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS;
-            const tolerance = 0.01;
-            
-            if (Math.abs(totalAllAmounts - billAmount) <= tolerance) {
-                balanceAmount = 0;
-            }
-
-            // NEW: PAID_AMOUNT_8 का value decide करें
-            // अगर previous data है तो Payable Amount भेजें
-            // अगर previous data नहीं है तो Total Paid Amount भेजें
-            let paidAmount8Value = totalPaid; // Default: Total Paid Amount
-            if (hasAnyPreviousData) {
-                paidAmount8Value = payableAmount; // Previous data होने पर Payable Amount भेजें
-            }
-
-            data[uniqueId] = {
-                billAmount,
-                tdsAmount,
-                currentPaidAmount,
-                latestPaid,
-                latestBalance,
-                latestTDS,
-                payableAmount,
-                totalPaid,
-                balanceAmount,
-                totalAllAmounts,
-                // NEW: For PAID_AMOUNT_8
-                paidAmount8Value,
-                hasAnyPreviousData,
-                // For display purposes
-                displayLatestPaid: latestPaid,
-                displayPayableAmount: payableAmount,
-                displayTotalPaid: totalPaid,
-                displayBalance: balanceAmount,
-                displayTDS: tdsAmount,
-                displayBillAmount: billAmount,
-                hasPreviousTDS: latestTDS > 0,
-                hasPreviousPayment: latestPaid > 0,
-                hasPreviousBalance: latestBalance > 0,
-                // For ACTUAL_PAID_AMOUNT_8 - हमेशा Bill Amount भेजें
-                actualPaidAmount8: billAmount
-            };
+          return {
+            ...item,
+            netAmount16: netAmount,
+            latestPaidAmount: latestPaid,
+            latestBalanceAmount: latestPaid > 0 ? netAmount - latestPaid : netAmount
+          };
         });
-        return data;
-    }, [filteredBills, billInputData]);
 
-    const grandTotalCurrentPaidAmount = useMemo(() => {
-        return selectedBillIds.reduce((sum, billId) => {
-            const calc = calculatedBillsData[billId];
-            return sum + (calc?.currentPaidAmount || 0);
-        }, 0);
-    }, [selectedBillIds, calculatedBillsData]);
+        setAllData(processedData);
+        setVendors(response.data.uniqueVendors);
+        setSites(response.data.uniqueSites);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error loading data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-   const handleSubmitAll = async () => {
-    if (!globalPaymentData.BANK_DETAILS_8 || !globalPaymentData.PAYMENT_MODE_8 || !globalPaymentData.PAYMENT_DATE_8) {
-        alert("Please fill all Global Payment Details (Bank, Mode, Date)");
-        return;
+  const handleFilter = () => {
+    if (!vendorSearch) return alert("Please select a vendor");
+    const results = allData.filter(item =>
+      item.vendorFirmName.toLowerCase() === vendorSearch.toLowerCase() &&
+      (siteSearch ? item.siteName.toLowerCase() === siteSearch.toLowerCase() : true)
+    );
+    setFilteredData(results);
+    setShowData(true);
+    setSelectedBills([]);
+    setPaidAmounts({});
+  };
+
+  const toggleBillSelection = (uid) => {
+    setSelectedBills(prev => {
+      if (prev.includes(uid)) {
+        setPaidAmounts(current => {
+          const newPaid = { ...current };
+          delete newPaid[uid];
+          return newPaid;
+        });
+        return prev.filter(id => id !== uid);
+      } else {
+        setPaidAmounts(current => ({ ...current, [uid]: 0 }));
+        return [...prev, uid];
+      }
+    });
+  };
+
+  const handlePaidAmountChange = (uid, value) => {
+    let numValue = value === '' ? 0 : Number(value);
+    if (numValue < 0) numValue = 0;
+
+    const bill = filteredData.find(b => b.UID === uid);
+    if (!bill) return;
+
+    const currentBalance = calculateCurrentBalance(bill);
+    if (numValue > currentBalance) {
+      alert(`Cannot pay more than current balance (₹${currentBalance.toLocaleString('en-IN')})`);
+      numValue = currentBalance;
     }
 
-    const timestamp = new Date().toLocaleString("en-IN", {
-        day: "2-digit", month: "2-digit", year: "numeric",
-        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true
-    });
+    setPaidAmounts(prev => ({ ...prev, [uid]: numValue }));
+  };
 
-    const grandTotalValue = grandTotalCurrentPaidAmount;
+  const calculateCurrentBalance = (bill) => {
+    const netAmount = Number(bill.netAmount16 || 0);
+    const previousPaid = Number(bill.latestPaidAmount || 0);
+    return previousPaid > 0 ? netAmount - previousPaid : netAmount;
+  };
 
-    const payload = selectedBillIds.map(billId => {
-        const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
-        const inputs = billInputData[billId] || {};
-        const calc = calculatedBillsData[billId] || {};
+  const calculateNewBalance = (bill) => {
+    const currentPaid = paidAmounts[bill.UID] || 0;
+    const currentBalance = calculateCurrentBalance(bill);
+    return currentBalance - currentPaid;
+  };
 
-        // Check if this specific bill has previous data
-        const hasAnyPreviousData = calc.latestPaid > 0 || calc.latestTDS > 0 || calc.latestBalance > 0;
-        
-        // Payment_Sheet के लिए PAID_AMOUNT_8 का value
-        const paidForPaymentSheet = hasAnyPreviousData ? 
-            calc.payableAmount || 0 : 
-            calc.totalPaid || 0;
+  const calculateTotalPaidAfter = (bill) => {
+    const previousPaid = Number(bill.latestPaidAmount || 0);
+    const currentPaid = paidAmounts[bill.UID] || 0;
+    return previousPaid + currentPaid;
+  };
+
+  const grandTotal = Object.values(paidAmounts).reduce((sum, amt) => sum + amt, 0);
+
+  const paymentDetailsLabel = paymentMode === "Cheque" ? "CHEQUE NUMBER" : "PAYMENT DETAILS";
+
+  const handleSubmit = async () => {
+    if (selectedBills.length === 0) return alert('Please select at least one bill');
+    if (!bankDetails || !paymentMode || !paymentDetails.trim() || !paymentDate) {
+      return alert('Please fill all global payment details');
+    }
+
+    const invalidBills = selectedBills.filter(uid => (paidAmounts[uid] || 0) <= 0);
+    if (invalidBills.length > 0) {
+      if (!window.confirm(`${invalidBills.length} bill(s) have ₹0 paid. Continue?`)) return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = selectedBills.map(uid => {
+        const bill = filteredData.find(item => item.UID === uid);
+        const currentPaid = paidAmounts[uid] || 0;
+        const netAmount = Number(bill.netAmount16 || 0);
+        const previousPaid = Number(bill.latestPaidAmount || 0);
+        const totalPaidAfter = previousPaid + currentPaid;
+        const newBalance = netAmount - totalPaidAfter;
 
         return {
-            RccBillNo: bill.rccBillNo,
-            Timestamp: timestamp,
-            Planned_8: bill.planned7 || "",
-            Project_Name: bill.projectName,
-            Contractor_Name_5: bill.contractorName,
-            Contractor_Firm_Name_5: bill.firmName,
-            Bill_Date_5: bill.billDate,
-
-            // Previous data (for reference)
-            latestPaidAmount8: calc.latestPaid || 0,
-            latestBalanceAmount8: calc.latestBalance || 0,
-            latestTDSAmount8: calc.latestTDS || 0,
-            
-            // IMPORTANT: ये सभी values भेजें, backend decide करेगा क्या update करना है
-            // FMS के लिए सभी values भेजें
-            tdsAmount8: calc.tdsAmount || 0,           // TDS amount
-            payableAmount8: calc.payableAmount || 0,   // Payable amount
-            paidAmount8: (calc.latestPaid || 0) + (calc.currentPaidAmount || 0), // Previous + Current Paid
-            balanceAmount8: calc.balanceAmount || 0,   // New balance
-            
-            // Payment_Sheet के लिए
-            PAID_AMOUNT_8: paidForPaymentSheet,       // Payment Sheet के लिए value
-            
-            ACTUAL_PAID_AMOUNT_8: calc.billAmount || 0,
-            GRAND_TOTAL_AMOUNT: grandTotalValue,
-
-            bankDetails8: globalPaymentData.BANK_DETAILS_8,
-            paymentMode8: globalPaymentData.PAYMENT_MODE_8,
-            paymentDetails8: globalPaymentData.PAYMENT_DETAILS_8 || "",
-            paymentDate8: globalPaymentData.PAYMENT_DATE_8,
-            status8: "Done",
-            
-            // IMPORTANT: इस specific bill के लिए previous data है या नहीं
-            hasPreviousData: hasAnyPreviousData
+          UID: bill.UID,
+          planned17: bill.planned17 || '',
+          siteName: bill.siteName || '',
+          vendorFirmName16: bill.vendorFirmName || '',
+          billNo: bill.invoice13,
+          billDate16: bill.billDate || bill.planned16 || '',
+          netAmount16: netAmount,
+          currentPaid: currentPaid,
+          paidAmount17: totalPaidAfter,
+          balanceAmount17: newBalance,
+          bankDetails17: bankDetails,
+          paymentMode17: paymentMode,
+          paymentDetails17: paymentDetails,
+          paymentDate18: paymentDate,
+          grandTotal: grandTotal,
+          originalNetAmount: netAmount,
+          previousPaidAmount: previousPaid
         };
-    });
+      });
 
-    console.log('Payload sample:', payload[0]);
-    console.log('Bill has previous data:', payload[0]?.hasPreviousData);
-
-    try {
-        await updatePayments(payload).unwrap();
-        alert(`Success! ${payload.length} bills processed successfully!\nGrand Total: ₹${grandTotalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
-        handleClearFilter();
-        refetch();
-    } catch (err) {
-        console.error("Submit failed:", err);
-        alert("Failed: " + (err?.data?.error || "Please try again"));
+      const response = await axios.post('http://localhost:5000/api/Update-Payment', payload);
+      if (response.data.success) {
+        alert(`Success! ${response.data.addedToPaymentSheet} bill(s) recorded.\nFMS Updated: ${response.data.updatedInFMS}`);
+        fetchInitialData();
+        setSelectedBills([]);
+        setPaidAmounts({});
+        setBankDetails("");
+        setPaymentMode("");
+        setPaymentDetails("");
+        setPaymentDate("");
+        setShowData(false);
+      } else {
+        alert('Error: ' + response.data.message);
+      }
+    } catch (error) {
+      alert('Failed to submit: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setSubmitting(false);
     }
-};
+  };
+
+  const getPaymentSummary = (bill) => {
+    const netAmount = Number(bill.netAmount16 || 0);
+    const previousPaid = Number(bill.latestPaidAmount || 0);
+    const currentBalance = calculateCurrentBalance(bill);
+    const currentPaid = paidAmounts[bill.UID] || 0;
+    const newBalance = calculateNewBalance(bill);
+    const totalPaidAfter = calculateTotalPaidAfter(bill);
+
+    return { netAmount, previousPaid, currentBalance, currentPaid, newBalance, totalPaidAfter };
+  };
+
+  const scrollToPaymentSection = () => {
+    paymentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-gray-100 pt-8 px-2 md:px-6 pb-20">
-            {isLoading && (
-                <div className="max-w-xl mx-auto p-10 mt-20 text-center bg-white rounded-lg shadow-xl">
-                    <p className="text-xl font-semibold text-blue-600">Loading Payment Data...</p>
-                </div>
-            )}
-
-            {!isLoading && (
-                <div>
-                    {!showData ? (
-                        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8 mt-10">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Select Contractor to View Bills</h2>
-                            <div className="space-y-4">
-                                <label className="block text-sm font-medium text-gray-700">Contractor Name</label>
-                                <select value={selectedContractor} onChange={(e) => setSelectedContractor(e.target.value)} className="w-full p-3 border rounded-lg bg-gray-50">
-                                    <option value="">-- Select Contractor --</option>
-                                    {uniqueContractors.map((c, i) => (
-                                        <option key={i} value={c.contractorName}>{c.contractorName}</option>
-                                    ))}
-                                </select>
-                                <label className="block text-sm font-medium text-gray-700">Contractor Firm</label>
-                                <input value={selectedFirm} readOnly className="w-full p-3 border rounded-lg bg-gray-200 text-gray-600" />
-                                <button onClick={handleFetch} className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">View Bills</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="max-w-[1600px] mx-auto">
-                            <div className="bg-white p-4 rounded-lg shadow mb-6 flex justify-between items-center sticky top-2 z-10 border border-gray-300">
-                                <div>
-                                    <div className="text-gray-500 text-sm">Viewing Bills for:</div>
-                                    <span className="font-bold text-gray-900 ml-2 text-xl">{selectedContractor}</span>
-                                    <span className="mx-2 text-gray-300">|</span>
-                                    <span className="text-gray-600 font-medium">{selectedFirm}</span>
-                                </div>
-                                <button onClick={handleClearFilter} className="text-red-600 font-semibold hover:underline flex items-center gap-1">
-                                    <X size={16} /> Change Contractor
-                                </button>
-                            </div>
-
-                            <div className="space-y-6">
-                                {filteredBills.map((bill) => {
-                                    const uniqueId = bill._id || bill.rccBillNo;
-                                    const isSelected = selectedBillIds.includes(uniqueId);
-                                    const billCalculations = calculatedBillsData[uniqueId] || {};
-                                    const inputs = billInputData[uniqueId] || {};
-                                    
-                                    const hasPreviousPayment = formatAmount(bill.latestPaidAmount8) > 0;
-                                    const hasPreviousTDS = formatAmount(bill.latestTDSAmount8) > 0;
-                                    const hasPreviousBalance = formatAmount(bill.latestBalanceAmount8) > 0;
-                                    const hasAnyPreviousData = hasPreviousPayment || hasPreviousTDS || hasPreviousBalance;
-
-                                    // Check if Previous Paid + Current Paid + Latest TDS = Bill Amount
-                                    const totalAllAmounts = billCalculations.latestPaid + billCalculations.currentPaidAmount + billCalculations.latestTDS;
-                                    const isBalanceZeroCondition = Math.abs(totalAllAmounts - billCalculations.billAmount) <= 0.01;
-
-                                    return (
-                                        <div key={uniqueId} className={`bg-white rounded-xl shadow-md border-2 overflow-hidden transition-all duration-200 ${isSelected ? "border-blue-600 ring-2 ring-blue-100" : "border-gray-200 hover:border-blue-300"}`}>
-                                            <div className={`p-4 flex items-center justify-between ${isSelected ? 'bg-blue-50' : 'bg-gray-50'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <button onClick={() => toggleBillSelection(uniqueId)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold shadow-sm border transition-all ${isSelected ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"}`}>
-                                                        {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
-                                                        {isSelected ? "Bill Selected" : "Select Bill"}
-                                                    </button>
-                                                    <div>
-                                                        <h3 className="text-lg font-bold text-gray-800">{bill.projectName}</h3>
-                                                        <p className="text-xs text-gray-500 font-mono">Bill No: {bill.rccBillNo}</p>
-                                                        {hasAnyPreviousData && (
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                {hasPreviousPayment && (
-                                                                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">Prev Paid: ₹{formatAmount(bill.latestPaidAmount8).toLocaleString("en-IN")}</span>
-                                                                )}
-                                                                {hasPreviousTDS && (
-                                                                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">Prev TDS: ₹{formatAmount(bill.latestTDSAmount8).toLocaleString("en-IN")}</span>
-                                                                )}
-                                                                {hasPreviousBalance && (
-                                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Prev Balance: ₹{formatAmount(bill.latestBalanceAmount8).toLocaleString("en-IN")}</span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold text-green-700">₹{formatAmount(bill.billAmount).toLocaleString("en-IN")}</div>
-                                                    <div className="text-xs text-gray-500">Bill Date: {bill.billDate}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-5">
-                                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-4 mb-4">
-                                                    <InfoField label="Contractor Bill No" value={bill.contractorBillNo} />
-                                                    <InfoField label="Work Name" value={bill.workName} className="col-span-2" />
-                                                    <InfoField label="Contractor Name" value={bill.contractorName} className="col-span-2" />
-                                                    <InfoField label="Firm Name" value={bill.firmName} />
-                                                    <InfoField label="Project ID" value={bill.projectId} />
-                                                    <InfoField label="RCC Summary No" value={bill.rccSummarySheetNo} />
-                                                    <InfoField label="Work Order No" value={bill.WorkOrderNo} />
-                                                    <InfoField label="Work Order Value" value={bill.WorkOrderValue} isMoney={true} />
-                                                    <InfoField label="Remark" value={bill.remark} />
-                                                    <InfoField label="Planned 7" value={bill.planned7} />
-                                                    <InfoField label="Net Amount Current" value={bill.NETAMOUNTCurrentAmount} isMoney={true} />
-                                                    <InfoField label="Previous Bill Amt" value={bill.PreviousBillAmount} isMoney={true} />
-                                                    <InfoField label="Up To Date Paid" value={bill.UPToDatePaidAmount} isMoney={true} />
-                                                    <InfoField label="Balance Amount (API)" value={bill.BalanceAmount} isMoney={true} />
-                                                    {(hasPreviousPayment || hasPreviousTDS) && (
-                                                        <>
-                                                            {hasPreviousPayment && (
-                                                                <>
-                                                                    <InfoField 
-                                                                        label="Latest Paid Amt (8)" 
-                                                                        value={bill.latestPaidAmount8} 
-                                                                        isMoney={true} 
-                                                                        colorClass="text-blue-600 font-bold" 
-                                                                    />
-                                                                    <InfoField 
-                                                                        label="Latest Balance Amt (8)" 
-                                                                        value={bill.latestBalanceAmount8} 
-                                                                        isMoney={true} 
-                                                                        colorClass="text-red-600 font-bold" 
-                                                                    />
-                                                                </>
-                                                            )}
-                                                            {hasPreviousTDS && (
-                                                                <InfoField 
-                                                                    label="Latest TDS Amt (8)" 
-                                                                    value={bill.latestTDSAmount8} 
-                                                                    isMoney={true} 
-                                                                    colorClass="text-purple-600 font-bold" 
-                                                                />
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-3 items-center pt-2 border-t pt-4">
-                                                    <span className="text-xs font-bold text-gray-400 uppercase mr-2">Document Links:</span>
-                                                    <DocLink label="Bill PDF" url={bill.billUrl} />
-                                                    <DocLink label="Previous Bill PDF" url={bill.PreviousBillUrl} />
-                                                    <DocLink label="Measurement Sheet" url={bill.measurementSheetUrl} />
-                                                    <DocLink label="Attendance Sheet" url={bill.attendanceSheetUrl} />
-                                                    <DocLink label="RCC Summary Sheet" url={bill.rccSummarySheetUrl} />
-                                                    <DocLink label="Work Order" url={bill.workOrderUrl} />
-                                                </div>
-                                            </div>
-
-                                            {isSelected && (
-                                                <div className="bg-blue-50 border-t-2 border-blue-200 p-6">
-                                                    <h3 className="text-blue-800 font-bold mb-4">Local Payment Inputs for Bill: {bill.rccBillNo}</h3>
-                                                    
-                                                    {hasAnyPreviousData && (
-                                                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                {hasPreviousPayment && (
-                                                                    <div className="text-center">
-                                                                        <div className="text-xs font-bold text-gray-500 uppercase">PREVIOUS PAID AMOUNT</div>
-                                                                        <div className="text-lg font-bold text-blue-700">
-                                                                            ₹{formatAmount(bill.latestPaidAmount8).toLocaleString("en-IN")}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {hasPreviousBalance && (
-                                                                    <div className="text-center">
-                                                                        <div className="text-xs font-bold text-gray-500 uppercase">PREVIOUS BALANCE</div>
-                                                                        <div className="text-lg font-bold text-red-700">
-                                                                            ₹{formatAmount(bill.latestBalanceAmount8).toLocaleString("en-IN")}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                {hasPreviousTDS && (
-                                                                    <div className="text-center">
-                                                                        <div className="text-xs font-bold text-gray-500 uppercase">PREVIOUS TDS AMOUNT</div>
-                                                                        <div className="text-lg font-bold text-purple-700">
-                                                                            ₹{formatAmount(bill.latestTDSAmount8).toLocaleString("en-IN")}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                                                        <PaymentInputComponent 
-                                                            label="TDS Amount (8)" 
-                                                            id={uniqueId} 
-                                                            initialValue={inputs.tds_amount_8} 
-                                                            onValueChange={(id, v) => handleInputChange(id, "tds_amount_8", v)} 
-                                                            color="blue" 
-                                                            isNumeric={true} 
-                                                            placeholder={hasPreviousTDS ? "0 (Previous TDS Applied)" : "Enter TDS Amount"}
-                                                            readOnly={hasPreviousTDS}
-                                                        />
-                                                        <PaymentInput 
-                                                            label="Payable Amount" 
-                                                            value={billCalculations.payableAmount || 0} 
-                                                            color="green" 
-                                                        />
-                                                        <PaymentInputComponent 
-                                                            label="Current Paid Amount (8)" 
-                                                            id={uniqueId} 
-                                                            initialValue={inputs.paid_amount_8} 
-                                                            onValueChange={(id, v) => handleInputChange(id, "paid_amount_8", v)} 
-                                                            color="blue" 
-                                                            isNumeric={true} 
-                                                            placeholder="Enter Paid Amount"
-                                                        />
-                                                        <PaymentInput 
-                                                            label="New Balance Amount" 
-                                                            value={billCalculations.balanceAmount || 0} 
-                                                            color={billCalculations.balanceAmount === 0 ? "green" : "red"} 
-                                                        />
-                                                    </div>
-                                                    
-                                                    {/* Balance Zero Condition Indicator */}
-                                                    {isBalanceZeroCondition && billCalculations.balanceAmount === 0 && (
-                                                        <div className="mt-4 p-3 bg-green-100 border border-green-400 rounded-lg">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="text-green-700 font-bold">✓ AUTOMATIC ZERO BALANCE</div>
-                                                                <div className="text-green-600 text-sm">
-                                                                    Prev Paid (₹{billCalculations.latestPaid.toLocaleString("en-IN")}) + 
-                                                                    Current Paid (₹{billCalculations.currentPaidAmount.toLocaleString("en-IN")}) + 
-                                                                    Prev TDS (₹{billCalculations.latestTDS.toLocaleString("en-IN")}) = 
-                                                                    Bill Amount (₹{billCalculations.billAmount.toLocaleString("en-IN")})
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* PAID_AMOUNT_8 Information */}
-                                                    <div className="mt-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                                                        <div className="text-blue-700 font-bold">PAID_AMOUNT_8 Information:</div>
-                                                        <div className="text-sm text-blue-600 mt-1">
-                                                            {hasAnyPreviousData ? (
-                                                                <>
-                                                                    <span className="font-semibold">✓ Previous Data Exists</span>
-                                                                    <div className="ml-2">PAID_AMOUNT_8 = Payable Amount (₹{billCalculations.payableAmount.toLocaleString("en-IN")})</div>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <span className="font-semibold">✓ New Bill (No Previous Data)</span>
-                                                                    <div className="ml-2">PAID_AMOUNT_8 = Total Paid Amount (₹{billCalculations.totalPaid.toLocaleString("en-IN")})</div>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="mt-6">
-                                                        <button 
-                                                            onClick={() => handleSaveAndScroll(uniqueId)} 
-                                                            className="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition"
-                                                        >
-                                                            Save & Proceed to Global Payment
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {selectedBillIds.length > 0 && (
-                                <div className="max-w-[1600px] mx-auto bg-green-50 p-6 rounded-xl shadow-lg border-2 border-green-400 my-8">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-2xl font-bold text-green-800">Grand Total (Current Paid Amount)</h2>
-                                        <div className="text-4xl font-extrabold text-green-700">
-                                            ₹{grandTotalCurrentPaidAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                        </div>
-                                    </div>
-                                    <p className="text-green-600 mt-1">Sum of <strong>Current Paid Amount</strong> from {selectedBillIds.length} selected bills.</p>
-                                </div>
-                            )}
-
-                            {selectedBillIds.length > 0 && (
-                                <div className="mt-8 mb-12" ref={globalPaymentRef}>
-                                    <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">
-                                        <span className="text-blue-600">Global Payment Details</span> ({selectedBillIds.length} Bills Selected)
-                                    </h2>
-
-                                    {isSuccess && <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-800 rounded-lg">Payment submitted successfully!</div>}
-                                    {isError && <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-800 rounded-lg">Error: {error?.data?.error || "Submission failed"}</div>}
-
-                                    <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-green-200">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            <PaymentInputComponent label="BANK DETAILS (8)" id="BANK_DETAILS_8" initialValue={globalPaymentData.BANK_DETAILS_8} onValueChange={(id, v) => handleGlobalInputChange(id, v)} color="green" options={bankOptions} />
-                                            <PaymentInputComponent label="PAYMENT MODE (8)" id="PAYMENT_MODE_8" initialValue={globalPaymentData.PAYMENT_MODE_8} onValueChange={(id, v) => handleGlobalInputChange(id, v)} color="green" options={modeOptions} />
-                                            <PaymentInputComponent label={paymentDetailsLabel} id="PAYMENT_DETAILS_8" initialValue={globalPaymentData.PAYMENT_DETAILS_8} onValueChange={(id, v) => handleGlobalInputChange(id, v)} color="green" isNumeric={false} />
-                                            <PaymentInputComponent label="PAYMENT DATE (8)" id="PAYMENT_DATE_8" initialValue={globalPaymentData.PAYMENT_DATE_8} onValueChange={(id, v) => handleGlobalInputChange(id, v)} color="green" isDate={true} isNumeric={false} />
-                                        </div>
-
-                                        <div className="mt-8 flex justify-end">
-                                            <button
-                                                onClick={handleSubmitAll}
-                                                disabled={isSubmitting || selectedBillIds.length === 0}
-                                                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {isSubmitting ? "Submitting..." : "SUBMIT ALL PAYMENT DATA"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedBillIds.length === 0 && filteredBills.length > 0 && (
-                                <div className="bg-yellow-50 p-4 text-center rounded-lg border border-yellow-300 text-yellow-800 font-medium mt-8">
-                                    Please select at least one bill to proceed.
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+      <div className="flex justify-center items-center h-screen text-xl font-semibold text-gray-600">
+        Loading...
+      </div>
     );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 md:p-6 lg:p-8 font-sans">
+      {/* Selection Area */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 relative" ref={vendorRef}>
+            <label className="block text-xs font-bold text-gray-600 mb-2">Viewing Bills for:</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search Vendor..."
+                value={vendorSearch}
+                onFocus={() => setShowVendorList(true)}
+                onChange={(e) => setVendorSearch(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <FaChevronDown className="absolute right-4 top-4 text-gray-500" />
+            </div>
+            {showVendorList && (
+              <ul className="absolute left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg max-h-52 overflow-y-auto shadow-xl z-50">
+                {vendors
+                  .filter(v => v.vendorFirmName.toLowerCase().includes(vendorSearch.toLowerCase()))
+                  .map((v, i) => (
+                    <li
+                      key={i}
+                      onClick={() => { setVendorSearch(v.vendorFirmName); setShowVendorList(false); }}
+                      className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    >
+                      {v.vendorFirmName}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex-1 relative" ref={siteRef}>
+            <label className="block text-xs font-bold text-gray-600 mb-2">Site Name:</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search Site..."
+                value={siteSearch}
+                onFocus={() => setShowSiteList(true)}
+                onChange={(e) => setSiteSearch(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 text-base focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <FaChevronDown className="absolute right-4 top-4 text-gray-500" />
+            </div>
+            {showSiteList && (
+              <ul className="absolute left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg max-h-52 overflow-y-auto shadow-xl z-50">
+                {sites
+                  .filter(s => s.siteName.toLowerCase().includes(siteSearch.toLowerCase()))
+                  .map((s, i) => (
+                    <li
+                      key={i}
+                      onClick={() => { setSiteSearch(s.siteName); setShowSiteList(false); }}
+                      className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    >
+                      {s.siteName}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+
+          <button
+            onClick={handleFilter}
+            className="px-10 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+          >
+            <FaSearch /> Filter
+          </button>
+        </div>
+      </div>
+
+      {showData && (
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 className="text-2xl font-bold">
+              {vendorSearch} <span className="text-gray-500 font-normal">| {siteSearch || 'All Sites'}</span>
+            </h2>
+            <button
+              onClick={() => { setShowData(false); setSelectedBills([]); setPaidAmounts({}); }}
+              className="text-red-600 font-bold text-lg flex items-center gap-2 hover:underline"
+            >
+              <FaTimes /> Change Contractor
+            </button>
+          </div>
+
+          {filteredData.map((item) => {
+            const summary = getPaymentSummary(item);
+            return (
+              <div
+                key={item.UID}
+                className={`bg-white rounded-xl shadow-md p-6 mb-6 border-l-8 ${selectedBills.includes(item.UID) ? 'border-green-600' : 'border-gray-200'}`}
+              >
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-6">
+                  <div className="flex flex-col sm:flex-row gap-6 items-start">
+                    <div
+                      onClick={() => toggleBillSelection(item.UID)}
+                      className={`border-2 border-gray-300 rounded-lg px-5 py-3 cursor-pointer flex items-center gap-3 ${selectedBills.includes(item.UID) ? 'bg-green-50' : 'bg-white'}`}
+                    >
+                      <input type="checkbox" checked={selectedBills.includes(item.UID)} readOnly className="w-5 h-5" />
+                      <span className="font-bold">Select Bill</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-800">{item.siteName}</h3>
+                      <p className="text-sm text-gray-600">
+                        Invoice No: <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">{item.invoice13 || '-'}</span>
+                        {item.UID && ` | UID: ${item.UID}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-green-600">₹{summary.netAmount.toLocaleString('en-IN')}</div>
+                    <div className="text-xs text-gray-500">Planned Date: {item.planned17}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 border-t border-gray-200 pt-6">
+                  <DetailItem label="MATERIAL TYPE" value={item.materialType} />
+                  <DetailItem label="VENDOR FIRM NAME" value={item.vendorFirmName} />
+                  <DetailItem label="INVOICE NO" value={item.invoice13} color="text-blue-600" />
+                  <DetailItem label="BILL DATE" value={item.billDate} color="text-blue-600" />
+                  <DetailItem label="FINAL INDENT NO" value={item.finalIndentNo} />
+                  <DetailItem label="PO NUMBER" value={item.poNumber} />
+                  <DetailItem label="MRN NO" value={item.mrnNo} />
+                  <DetailItem label="PLANNED 17" value={item.planned17} />
+                  <DetailItem label="NET AMOUNT 17" value={`₹${summary.netAmount.toLocaleString('en-IN')}`} />
+                  <DetailItem label="Previous Paid Amount" value={`₹${summary.previousPaid.toLocaleString('en-IN')}`} color="text-green-600" />
+                  <DetailItem label="Remaining Amount" value={`₹${summary.previousPaid === 0 ? 0 : summary.currentBalance.toLocaleString('en-IN')}`} color="text-green-600" />
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-4">
+                  {item.finalIndentPDF && <DocLink icon={<FaFilePdf />} label="Indent PDF" url={item.finalIndentPDF} />}
+                  {item.poPDF && <DocLink icon={<FaFilePdf />} label="PO PDF" url={item.poPDF} />}
+                  {item.mrnPDF && <DocLink icon={<FaFilePdf />} label="MRN PDF" url={item.mrnPDF} />}
+                  {item.approvalQuotationPDF && <DocLink icon={<FaFilePdf />} label="Quotation PDF" url={item.approvalQuotationPDF} />}
+                </div>
+
+                {selectedBills.includes(item.UID) && (
+                  <div className="mt-8 p-6 bg-green-50 rounded-lg border border-green-300">
+                    <h4 className="mb-6 text-green-700 font-bold">
+                      Payment Details for Invoice: <strong>{item.invoice13}</strong> (UID: {item.UID})
+                    </h4>
+
+                    <div className="mb-6 p-4 bg-blue-100 rounded-lg border-l-4 border-blue-500">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div><span className="font-bold text-gray-700">Original Net Amount (17):</span> <span className="ml-3 font-bold text-blue-700 text-lg">₹{summary.netAmount.toLocaleString('en-IN')}</span></div>
+                        <div><span className="font-bold text-gray-700">Previously Paid:</span> <span className="ml-3 font-bold text-green-700 text-lg">₹{summary.previousPaid.toLocaleString('en-IN')}</span></div>
+                        <div><span className="font-bold text-gray-700">Current Balance:</span> <span className="ml-3 font-bold text-red-600 text-lg">₹{summary.currentBalance.toLocaleString('en-IN')}</span></div>
+                        <div><span className="font-bold text-gray-700">Total Paid After:</span> <span className="ml-3 font-bold text-green-700 text-lg">₹{summary.totalPaidAfter.toLocaleString('en-IN')}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1">CURRENT PAID AMOUNT ₹</label>
+                        <input
+                          type="number"
+                          value={paidAmounts[item.UID] || ''}
+                          onChange={(e) => handlePaidAmountChange(item.UID, e.target.value)}
+                          placeholder="Enter amount"
+                          min="0"
+                          className="w-full px-4 py-3 rounded-lg border-2 border-green-500 focus:outline-none focus:ring-2 focus:ring-green-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1">NEW BALANCE</label>
+                        <input
+                          type="number"
+                          value={summary.newBalance}
+                          readOnly
+                          className="w-full px-4 py-3 rounded-lg border-2 border-red-500 bg-red-50 font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all duration-300"
+                          style={{ width: `${(summary.totalPaidAfter / summary.netAmount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={scrollToPaymentSection}
+                      className="mt-6 px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                    >
+                      <FaArrowDown /> Go to Global Payment Section
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {selectedBills.length > 0 && (
+            <div className="bg-green-100 p-6 rounded-xl border-2 border-green-500 mb-8">
+              <h3 className="text-green-700 font-bold text-xl">
+                Grand Total (Current Payment)
+                <span className="float-right text-3xl">₹{grandTotal.toLocaleString('en-IN')}</span>
+              </h3>
+            </div>
+          )}
+
+          {selectedBills.length > 0 && (
+            <div ref={paymentSectionRef} className="bg-white p-8 rounded-xl shadow-lg">
+              <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                Global Payment Details ({selectedBills.length} Bill{selectedBills.length > 1 ? 's' : ''} Selected)
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2">BANK DETAILS</label>
+                  <select
+                    value={bankDetails}
+                    onChange={(e) => setBankDetails(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="SVC Main A/C(202)">SVC Main A/C(202)</option>
+                    <option value="SVC VENDER PAY A/C(328)">SVC VENDER PAY A/C(328)</option>
+                    <option value="HDFC">HDFC Bank</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2">PAYMENT MODE</label>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="NEFT">NEFT</option>
+                    <option value="RTGS">RTGS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2">{paymentDetailsLabel}</label>
+                  <input
+                    type="text"
+                    placeholder={paymentMode === "Cheque" ? "Enter Cheque Number" : "Enter detail"}
+                    value={paymentDetails}
+                    onChange={(e) => setPaymentDetails(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2">PAYMENT DATE</label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-yellow-100 rounded-lg border border-yellow-300">
+                <p className="text-yellow-800 font-bold flex items-center gap-2">
+                  ⚠️ How it works: First payment = Full amount • Next payments deduct from balance
+                </p>
+              </div>
+
+              <button
+                disabled={submitting}
+                onClick={handleSubmit}
+                className={`mt-8 px-12 py-4 text-white font-bold text-xl rounded-lg transition ${submitting ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+              >
+                {submitting ? 'Submitting...' : 'SUBMIT ALL PAYMENT DATA'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default Payment_Tally;
+const DetailItem = ({ label, value, color = "text-gray-800" }) => (
+  <div>
+    <div className="text-xs text-gray-500 font-bold mb-1">{label}</div>
+    <div className={`text-base font-bold ${color}`}>{value || '-'}</div>
+  </div>
+);
+
+const DocLink = ({ icon, label, url }) => (
+  <a
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-2 text-blue-600 font-bold text-xs px-4 py-2 rounded border border-blue-600 bg-blue-50 hover:bg-blue-100 transition"
+  >
+    {icon} {label}
+  </a>
+);
+
+export default Payment;
