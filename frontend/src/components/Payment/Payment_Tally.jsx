@@ -895,7 +895,7 @@ const Payment_Tally = () => {
         PAYMENT_DATE_8: "",
     });
 
-    const bankOptions = ["SVC Bank", "HDFC Bank"];
+    const bankOptions = ["SVC Main A/C (202) ", "SVC Vendor Pay A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC  Scope Clg(215)","ICICI RNTU(914)"];
     const modeOptions = ["Cheque", "NEFT", "RTGS"];
 
     // Auto-fill Contractor Name from selected Firm
