@@ -70,6 +70,7 @@ async function uploadToGoogleDrive(base64Data, fileName) {
   }
 }
 
+
 // === GET: Contractor Bill Checked Office ===
 router.get('/Contractor_Bill_Checked_Office', async (req, res) => {
   try {
@@ -118,6 +119,7 @@ router.get('/Contractor_Bill_Checked_Office', async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 });
+
 
 // === GET: Enquiry Capture ===
 router.get('/enquiry-capture-Billing-Office', async (req, res) => {
