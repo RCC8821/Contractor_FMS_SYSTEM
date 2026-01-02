@@ -202,7 +202,7 @@ const Dashboard = () => {
       id: "sheet-link",
       name: "Sheet Link",
       icon: FileText,
-      url: "https://docs.google.com/spreadsheets/d/1-ZhXcSS3yYh3komYk5020JSAxyczYW3Pq6iob74NvhM/edit?gid=663292535#gid=663292535",
+      url: "https://docs.google.com/spreadsheets/d/1oDOdk15OIRVJvMWiSy2WFIiHUJ4cVK4XFUB8govLer0/edit?gid=500756859#gid=500756859",
       pages: [],
       gradient: "from-purple-500 to-pink-500",
     },
