@@ -146,7 +146,8 @@ const Bill_Checked = () => {
     "Ltr",
     "Cum",
     "RM",
-    "Sqmt"
+    "Sqmt",
+    "Cu.ft"
   ];
 
   // Handlers

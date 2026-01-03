@@ -78,7 +78,7 @@ const Bill_Checked_By_Office = () => {
     return Array.from(unique).map(no => ({ billNo: no }));
   }, [billsData, formData.projectId, formData.contractorFirm]);
 
-  const unitOptions = ['Sqft', 'Nos', 'Point', 'Rft', 'Kg', 'Hours', 'KW', 'Ltr', 'Cum', 'RM'];
+  const unitOptions = ['Sqft', 'Nos', 'Point', 'Rft', 'Kg', 'Hours', 'KW', 'Ltr', 'Cum', 'RM','Sqmt','Cu.ft'];
   const gstRates = ['0%', '5%', '12%', '18%'];
 
   const handleProjectIdChange = (e) => {
