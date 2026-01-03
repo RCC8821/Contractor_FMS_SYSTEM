@@ -146,6 +146,7 @@ const Bill_Checked = () => {
     "Ltr",
     "Cum",
     "RM",
+    "Sqmt"
   ];
 
   // Handlers
