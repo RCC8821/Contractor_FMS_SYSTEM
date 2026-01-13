@@ -125,145 +125,6 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
 
 
 
-
-// router.post('/updateBillFinalByRcc', async (req, res) => {
-//   try {
-//     const {
-//       rccBillNo,
-//       workOrderNo5,                   // Q column
-//       workOrderUrl,                   // R column  
-//       workOrderValue,                 // S column
-//       debitAmount,                    // W column
-//       actualBillAmount,               // X column
-//       sdAmount,                       // ✅ Column Y me
-//       materialDebitAmount5,           // ✅ Column Z me  
-//       cgst,                           // AA column
-//       sgst,                           // AB column
-//       netAmount,                      // AC column
-//       Previous_Bill_Amount_5,         // AD column
-//       UP_To_Date_Paid_Amount_5,       // AE column
-//       Balance_Amount_6,               // AF column
-//       remark,                         // AG column
-//       status,                         // AH column
-//     } = req.body;
-
-    
-  
-//     if (!rccBillNo) {
-//       return res.status(400).json({ success: false, error: 'RCC Bill No is required' });
-//     }
-
-//     // Step 1: Sirf B column se RCC Bill No dhundho
-//     const response = await sheets.spreadsheets.values.get({
-//       spreadsheetId,
-//       range: 'Contractor_Payment_FMS!B7:B',
-//     });
-
-//     const rows = response.data.values || [];
-//     if (rows.length === 0) {
-//       return res.status(404).json({ success: false, error: 'No data found' });
-//     }
-
-//     const rccList = rows.slice(1).map(r => r[0]);
-//     const rowIndex = rccList.findIndex(val => 
-//       val && val.toString().trim() === rccBillNo.toString().trim()
-//     );
-
-//     if (rowIndex === -1) {
-//       return res.status(404).json({ 
-//         success: false, 
-//         error: 'RCC Bill No not found',
-//         searched: rccBillNo 
-//       });
-//     }
-
-//     const targetRowNumber = 8 + rowIndex;
-//     console.log(`📍 Updating row ${targetRowNumber} for ${rccBillNo}`);
-
-//     // Step 2: Batch Update → Sirf required cells
-//     const updates = [];
-
-//     if (workOrderNo5 !== undefined)     updates.push({ range: `Contractor_Payment_FMS!Q${targetRowNumber}`, values: [[workOrderNo5]] });
-//     if (workOrderUrl !== undefined)     updates.push({ range: `Contractor_Payment_FMS!R${targetRowNumber}`, values: [[workOrderUrl]] });     
-//     if (workOrderValue !== undefined)   updates.push({ range: `Contractor_Payment_FMS!S${targetRowNumber}`, values: [[workOrderValue]] });
-    
-//     // T, U, V columns skip karein (contractor/firm/workType nahi hain)
-    
-//     if (debitAmount !== undefined)      updates.push({ range: `Contractor_Payment_FMS!U${targetRowNumber}`, values: [[debitAmount]] });
-//     if (actualBillAmount !== undefined) updates.push({ range: `Contractor_Payment_FMS!V${targetRowNumber}`, values: [[actualBillAmount]] });
-
-//     if (cgst !== undefined)             updates.push({ range: `Contractor_Payment_FMS!W${targetRowNumber}`, values: [[cgst]] });
-//     if (sgst !== undefined)             updates.push({ range: `Contractor_Payment_FMS!X${targetRowNumber}`, values: [[sgst]] });
-//     if (materialDebitAmount5 !== undefined) {
-//       console.log(`✅ Material Debit "${materialDebitAmount5}" → Column Y (Y${targetRowNumber})`);
-//       updates.push({ range: `Contractor_Payment_FMS!Y${targetRowNumber}`, values: [[materialDebitAmount5]] });
-//     } else {
-//       console.log("❌ materialDebitAmount5 is undefined!");
-//     }
-//     // ✅ CRITICAL FIX: SD Amount Y column me
-//     if (sdAmount !== undefined) {
-//       console.log(`✅ SD Amount "${sdAmount}" → Column Z (Z${targetRowNumber})`);
-//       updates.push({ range: `Contractor_Payment_FMS!Z${targetRowNumber}`, values: [[sdAmount]] });
-//     } else {
-//       console.log("❌ sdAmount is undefined!");
-//     }
-    
-    
-//     // ✅ Net Amount AC column me
-//     if (netAmount !== undefined) {
-//       console.log(`✅ Net Amount "${netAmount}" → Column AA (AA${targetRowNumber})`);
-//       updates.push({ range: `Contractor_Payment_FMS!AA${targetRowNumber}`, values: [[netAmount]] });
-//     } else {
-//       console.log("❌ netAmount is undefined!");
-//     }
-    
-//     if (Previous_Bill_Amount_5 !== undefined) updates.push({ range: `Contractor_Payment_FMS!AB${targetRowNumber}`, values: [[Previous_Bill_Amount_5]] });
-//     if (UP_To_Date_Paid_Amount_5 !== undefined) updates.push({ range: `Contractor_Payment_FMS!AC${targetRowNumber}`, values: [[UP_To_Date_Paid_Amount_5]] });
-//     if (Balance_Amount_6 !== undefined) updates.push({ range: `Contractor_Payment_FMS!AD${targetRowNumber}`, values: [[Balance_Amount_6]] });
-//     if (remark !== undefined)           updates.push({ range: `Contractor_Payment_FMS!AE${targetRowNumber}`, values: [[remark]] });
-//     if (status !== undefined)           updates.push({ range: `Contractor_Payment_FMS!AF${targetRowNumber}`, values: [[status]] });
-
-//     console.log(`📋 Total updates: ${updates.length}`);
-//     console.log("Updates to be made:", updates.map(u => u.range));
-
-//     if (updates.length === 0) {
-//       return res.status(400).json({ success: false, error: 'No fields to update' });
-//     }
-
-//     await sheets.spreadsheets.values.batchUpdate({
-//       spreadsheetId,
-//       resource: {
-//         valueInputOption: 'USER_ENTERED',
-//         data: updates,
-//       },
-//     });
-
-//     res.json({
-//       success: true,
-//       message: 'Bill updated successfully!',
-//       updatedRow: targetRowNumber,
-//       rccBillNo,
-//       updatedFieldsCount: updates.length,
-//       criticalFields: {
-//         sdAmount: { column: 'Y', cell: `Y${targetRowNumber}`, value: sdAmount },
-//         materialDebitAmount5: { column: 'Z', cell: `Z${targetRowNumber}`, value: materialDebitAmount5 },
-//         netAmount: { column: 'AC', cell: `AC${targetRowNumber}`, value: netAmount }
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error('❌ Error in /updateBillFinalByRcc:', error.message);
-//     console.error('Error stack:', error.stack);
-//     res.status(500).json({
-//       success: false,
-//       error: 'Server error',
-//       details: error.message
-//     });
-//   }
-// });
-
-
-
 router.post('/updateBillFinalByRcc', async (req, res) => {
   try {
     const {
@@ -330,12 +191,13 @@ router.post('/updateBillFinalByRcc', async (req, res) => {
     addUpdate('S', workOrderValue);
 
     addUpdate('U', debitAmount);          // Debit Amount → U
-    addUpdate('V', actualBillAmount);      // Actual Bill Amount → V
+    addUpdate('V', materialDebitAmount5);
+     // Material Debit → Y
+    addUpdate('W', actualBillAmount);      // Actual Bill Amount → V
 
-    addUpdate('W', cgst);                 // CGST → W
-    addUpdate('X', sgst);                 // SGST → X
+    addUpdate('X', cgst);                 // CGST → W
+    addUpdate('Y', sgst);                 // SGST → X
 
-    addUpdate('Y', materialDebitAmount5); // Material Debit → Y
     addUpdate('Z', sdAmount);             // SD Amount → Z
 
     addUpdate('AA', netAmount);           // Net Amount → AA
