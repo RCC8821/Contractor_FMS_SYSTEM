@@ -1,3 +1,4 @@
+
 // import React, { useState, useEffect } from "react";
 // import { Pencil, X, Search } from "lucide-react";
 // import {
@@ -488,84 +489,85 @@
 //     setMatchingFirmRows([]);
 //     setIsModalOpen(true);
 //   };
-// useEffect(() => {
-//   if (!selectedBill) return;
 
-//   const billAmount = formatAmount(selectedBill.billAmount);
-//   const debitAmountVal = parseFloat(formData.debitAmount) || 0;
-//   const gstRate = parseFloat(formData.gstPercent) || 0;
+//   // ✅ UPDATED CALCULATION LOGIC
+//   useEffect(() => {
+//     if (!selectedBill) return;
 
-//   // ✅ 1. Actual Amount = Bill Amount - Debit Amount
-//   const actualAmount = billAmount - debitAmountVal;
+//     const billAmount = formatAmount(selectedBill.billAmount);
+//     const debitAmountVal = parseFloat(formData.debitAmount) || 0;
+//     const materialDebitVal = parseFloat(formData.materialDebitAmount5) || 0;
+//     const gstRate = parseFloat(formData.gstPercent) || 0;
 
-//   // ✅ 2. GST सिर्फ Actual Amount पर लगेगी
-//   const gstOnActual = (actualAmount * gstRate) / 100;
-//   const cgst = gstOnActual / 2;
-//   const sgst = gstOnActual / 2;
+//     // ✅ 1. Actual Amount = Bill Amount - Debit Amount - Material Debit
+//     const actualAmount = billAmount - debitAmountVal - materialDebitVal;
 
-//   // 3. SD & Material Debit
-//   const sd = parseFloat(formData.sdAmount5) || 0;
-//   const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
+//     // ✅ 2. GST calculation on Actual Amount
+//     const gstOnActual = (actualAmount * gstRate) / 100;
+//     const cgst = gstOnActual / 2;
+//     const sgst = gstOnActual / 2;
 
-//   // 4. Amount with GST
-//   const amountWithGst = actualAmount + gstOnActual;
+//     // ✅ 3. Amount with GST
+//     const amountWithGst = actualAmount + gstOnActual;
 
-//   // 5. Final Net Amount (Paid Amount after deductions)
-//   const finalNetAmount = amountWithGst - sd - materialDebit;
+//     // ✅ 4. SD Amount deduction
+//     const sd = parseFloat(formData.sdAmount5) || 0;
 
-//   // ———————————————————————————————————————
-//   // UP TO DATE PAID AMOUNT
-//   // ———————————————————————————————————————
-//   const previousPaid = parseFloat(String(formData.previousBillAmount).replace(/,/g, "") || "0");
+//     // ✅ 5. Final Paid Amount (after SD deduction)
+//     const finalPaidAmount = amountWithGst - sd;
 
-//   // Base: Previous + Actual Amount (after debit) + GST on Actual
-//   let upToDatePaidAmount = previousPaid + actualAmount + gstOnActual;
+//     // ✅ 6. Up To Date Paid Amount
+//     const previousPaid = parseFloat(
+//       String(formData.previousBillAmount).replace(/,/g, "") || "0"
+//     );
+//     const upToDatePaidAmount = (previousPaid + amountWithGst).toFixed(2);
 
-//   // Note: Debit Amount का GST पहले से include है क्योंकि हम actualAmount पर GST लगा रहे हैं
-//   // इसलिए debit पर अलग से GST add करने की जरूरत नहीं
+//     // ✅ 7. Balance Amount
+//     let balanceAmount = "0";
+//     if (
+//       formData.workOrderValue &&
+//       formData.workOrderValue !== "0" &&
+//       formData.contractorName
+//     ) {
+//       const workOrderValue = formatAmount(formData.workOrderValue);
+//       balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(
+//         2
+//       );
+//     }
 
-//   upToDatePaidAmount = upToDatePaidAmount.toFixed(2);
-
-//   // Balance Amount
-//   let balanceAmount = "0";
-//   if (formData.workOrderValue && formData.workOrderValue !== "0" && formData.contractorName) {
-//     const workOrderValue = formatAmount(formData.workOrderValue);
-//     balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(2);
-//   }
-
-//   // Update FormData
-//   setFormData(prev => ({
-//     ...prev,
-//     cgst: cgst.toFixed(2),
-//     sgst: sgst.toFixed(2),
-//     netAmount: finalNetAmount.toFixed(2),
-//     upToDatePaidAmount: upToDatePaidAmount,
-//     balanceAmount: balanceAmount,
-//   }));
-// }, [
-//   formData.sdAmount5,
-//   formData.debitAmount,
-//   formData.materialDebitAmount5,
-//   formData.gstPercent,
-//   formData.workOrderValue,
-//   formData.previousBillAmount,
-//   formData.contractorName,
-//   selectedBill,
-// ]);
+//     // Update FormData
+//     setFormData((prev) => ({
+//       ...prev,
+//       cgst: cgst.toFixed(2),
+//       sgst: sgst.toFixed(2),
+//       netAmount: finalPaidAmount.toFixed(2),
+//       upToDatePaidAmount: upToDatePaidAmount,
+//       balanceAmount: balanceAmount,
+//     }));
+//   }, [
+//     formData.sdAmount5,
+//     formData.debitAmount,
+//     formData.materialDebitAmount5,
+//     formData.gstPercent,
+//     formData.workOrderValue,
+//     formData.previousBillAmount,
+//     formData.contractorName,
+//     selectedBill,
+//   ]);
 
 //   const handleChange = (e) => {
 //     const { name, value } = e.target;
 //     setFormData((prev) => ({ ...prev, [name]: value }));
 //   };
 
-//   // ✅ FIXED: handleSave function with correct payload structure
+//   // ✅ UPDATED handleSave function
 //   const handleSave = async () => {
 //     if (!selectedBill) return;
 
 //     const billAmount = formatAmount(selectedBill.billAmount);
 //     const debit = parseFloat(formData.debitAmount) || 0;
 //     const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
-//     const actualAmount = billAmount - debit;
+//     const actualAmount = billAmount - debit - materialDebit;
 
 //     // ✅ CORRECT PAYLOAD STRUCTURE matching backend API
 //     const payload = {
@@ -573,25 +575,20 @@
 //       workOrderNo5: formData.workOrderNo || "",
 //       workOrderUrl: formData.workOrderUrl || "",
 //       workOrderValue: formData.workOrderValue || "0",
-
 //       // ✅ CRITICAL FIXES:
 //       sdAmount: formatAmount(formData.sdAmount5), // Goes to Column Y
 //       debitAmount: formatAmount(formData.debitAmount), // Goes to Column W
 //       materialDebitAmount5: formatAmount(formData.materialDebitAmount5), // Goes to Column Z
 //       actualBillAmount: actualAmount.toString(), // Goes to Column X
-
 //       // GST amounts
 //       cgst: formData.cgst, // Goes to Column AA
 //       sgst: formData.sgst, // Goes to Column AB
-
 //       // Net Amount (should be calculated correctly)
 //       netAmount: formData.netAmount, // Goes to Column AC
-
 //       // Previous amounts
 //       Previous_Bill_Amount_5: formData.previousBillAmount || "0", // Column AD
 //       UP_To_Date_Paid_Amount_5: formData.upToDatePaidAmount || "0", // Column AE
 //       Balance_Amount_6: formData.balanceAmount || "0", // Column AF
-
 //       // Remark and Status
 //       remark: formData.remark5 || "", // Column AG
 //       status: formData.status5 || "Done", // Column AH
@@ -622,7 +619,8 @@
 
 //   const billAmount = selectedBill ? formatAmount(selectedBill.billAmount) : 0;
 //   const debitAmount = parseFloat(formData.debitAmount) || 0;
-//   const actualAmount = billAmount - debitAmount;
+//   const materialDebitAmount = parseFloat(formData.materialDebitAmount5) || 0;
+//   const actualAmount = billAmount - debitAmount - materialDebitAmount;
 
 //   return (
 //     <>
@@ -959,9 +957,8 @@
 
 //                   <div className="p-4 sm:p-6 md:p-8 max-h-[85vh] sm:max-h-screen overflow-y-auto">
 //                     <div className="space-y-4 sm:space-y-6 md:space-y-8">
-//                       {/* ✅ STRICT SECTION: Done Bills API se Previous Bill Display - Sirf tabhi show karein jab sab match kare */}
+//                       {/* ✅ STRICT SECTION: Done Bills API se Previous Bill Display */}
 //                       {(() => {
-//                         // ✅ STRICT CHECK: Sirf tabhi show karein jab sab kuch match kare
 //                         const hasRequiredData =
 //                           formData.contractorName &&
 //                           formData.firmName &&
@@ -1054,7 +1051,6 @@
 //                           );
 //                         }
 
-//                         // ✅ Jab sab data available ho tabhi previous bill search karein
 //                         const previousBillData = findPreviousBillData(
 //                           selectedBill.rccBillNo,
 //                           formData.contractorName,
@@ -1124,7 +1120,6 @@
 //                           );
 //                         }
 
-//                         // ✅ Agar data hai lekin match nahi hua
 //                         return (
 //                           <div className="bg-gradient-to-r from-red-50 to-pink-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-red-300 shadow-lg">
 //                             <h3 className="text-base sm:text-lg md:text-xl font-bold text-red-800 mb-3 sm:mb-4">
@@ -1329,26 +1324,45 @@
 //                         </p>
 //                       </div>
 
-//                       {/* Debit Amount */}
-//                       <div className="bg-red-50 p-4 sm:p-5 rounded-xl border-2 border-red-300">
-//                         <label className="block text-xs sm:text-sm font-bold text-red-700 mb-2">
-//                           {" "}
-//                           Other Debit Amount (Without Material)
-//                         </label>
-//                         <input
-//                           type="number"
-//                           name="debitAmount"
-//                           value={formData.debitAmount}
-//                           onChange={handleChange}
-//                           className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-red-400 rounded-lg text-red-700 font-bold text-sm sm:text-base"
-//                           placeholder="0"
-//                         />
+//                       {/* ✅ Other Debit Amount & Material Debit Amount in Same Row */}
+//                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+//                         <div className="bg-red-50 p-4 sm:p-5 rounded-xl border-2 border-red-300">
+//                           <label className="block text-xs sm:text-sm font-bold text-red-700 mb-2">
+//                             Other Debit Amount (Without Material)
+//                           </label>
+//                           <input
+//                             type="number"
+//                             name="debitAmount"
+//                             value={formData.debitAmount}
+//                             onChange={handleChange}
+//                             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-red-400 rounded-lg text-red-700 font-bold text-sm sm:text-base"
+//                             placeholder="0"
+//                           />
+//                         </div>
+
+//                         <div className="bg-orange-50 p-4 sm:p-5 rounded-xl border-2 border-orange-400">
+//                           <label className="block text-xs sm:text-sm font-bold text-orange-800 mb-2">
+//                             Material Debit Amount
+//                           </label>
+//                           <input
+//                             type="number"
+//                             name="materialDebitAmount5"
+//                             value={formData.materialDebitAmount5}
+//                             onChange={handleChange}
+//                             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-orange-500 rounded-lg text-orange-800 font-bold text-sm sm:text-base"
+//                             placeholder="0"
+//                           />
+//                         </div>
 //                       </div>
 
-//                       {/* Actual Amount */}
-//                       <div className="bg-gradient-to-br from-orange-600 to-red-700 text-white p-6 sm:p-8 rounded-xl text-center">
+//                       {/* ✅ Actual Amount */}
+//                       <div className="bg-gradient-to-br from-purple-600 to-pink-700 text-white p-6 sm:p-8 rounded-xl text-center">
 //                         <p className="text-sm sm:text-base font-bold mb-2">
 //                           ACTUAL AMOUNT
+//                           <br />
+//                           <span className="text-xs sm:text-sm opacity-90">
+//                             (Bill - Other Debit - Material Debit)
+//                           </span>
 //                         </p>
 //                         <p className="text-3xl sm:text-4xl md:text-5xl font-black">
 //                           ₹{actualAmount.toLocaleString("en-IN")}
@@ -1367,10 +1381,7 @@
 //                           className="w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg text-sm sm:text-base"
 //                         >
 //                           <option value="0">No GST (0%)</option>
-//                           {/* <option value="5">5%</option>
-//                           <option value="12">12%</option> */}
 //                           <option value="18">18%</option>
-//                           {/* <option value="28">28%</option> */}
 //                         </select>
 //                       </div>
 
@@ -1394,44 +1405,28 @@
 //                         </div>
 //                       </div>
 
-//                       {/* SD Amount and Material Debit */}
-//                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-//                         <div className="bg-yellow-50 p-4 sm:p-5 rounded-xl border-2 border-yellow-400">
-//                           <label className="block text-xs sm:text-sm font-bold text-yellow-800 mb-2">
-//                             SD Amount
-//                           </label>
-//                           <input
-//                             type="number"
-//                             name="sdAmount5"
-//                             value={formData.sdAmount5}
-//                             onChange={handleChange}
-//                             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-yellow-500 rounded-lg text-yellow-800 font-bold text-sm sm:text-base"
-//                             placeholder="0"
-//                           />
-//                         </div>
-
-//                         <div className="bg-red-50 p-4 sm:p-5 rounded-xl border-2 border-red-400">
-//                           <label className="block text-xs sm:text-sm font-bold text-red-800 mb-2">
-//                             Material Debit Amount
-//                           </label>
-//                           <input
-//                             type="number"
-//                             name="materialDebitAmount5"
-//                             value={formData.materialDebitAmount5}
-//                             onChange={handleChange}
-//                             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-red-500 rounded-lg text-red-800 font-bold text-sm sm:text-base"
-//                             placeholder="0"
-//                           />
-//                         </div>
+//                       {/* SD Amount */}
+//                       <div className="bg-yellow-50 p-4 sm:p-5 rounded-xl border-2 border-yellow-400">
+//                         <label className="block text-xs sm:text-sm font-bold text-yellow-800 mb-2">
+//                           SD Amount
+//                         </label>
+//                         <input
+//                           type="number"
+//                           name="sdAmount5"
+//                           value={formData.sdAmount5}
+//                           onChange={handleChange}
+//                           className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-yellow-500 rounded-lg text-yellow-800 font-bold text-sm sm:text-base"
+//                           placeholder="0"
+//                         />
 //                       </div>
 
-//                       {/* Final Net Amount */}
+//                       {/* ✅ Final Paid Amount */}
 //                       <div className="bg-gradient-to-br from-emerald-600 to-green-700 text-white p-6 sm:p-8 rounded-xl text-center">
 //                         <p className="text-base sm:text-lg font-bold mb-2">
 //                           PAID AMOUNT
 //                           <br />
 //                           <span className="text-sm">
-//                             (After SD & Material Debit)
+//                             (Actual + GST - SD)
 //                           </span>
 //                         </p>
 //                         <p className="text-4xl sm:text-5xl md:text-6xl font-black">
@@ -1463,7 +1458,7 @@
 //                         <label className="block text-xs sm:text-sm font-bold text-indigo-700 mb-2">
 //                           Up To Date Paid Amount
 //                           <span className="text-xs text-gray-600 ml-2">
-//                             (Previous + Current Bill + GST)
+//                             (Previous + Actual + GST)
 //                           </span>
 //                         </label>
 //                         <div className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-indigo-400 rounded-lg text-indigo-700 font-bold text-sm sm:text-base bg-gray-100">
@@ -1473,7 +1468,7 @@
 //                           ).toLocaleString("en-IN")}
 //                         </div>
 //                         <div className="text-xs text-gray-600 mt-1">
-//                           *SD, Material Debit & Debit Amount se unaffected
+//                           *SD से unaffected
 //                         </div>
 //                       </div>
 
@@ -2050,75 +2045,240 @@ const BILL_FINAL_BY_OFFICE = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ UPDATED CALCULATION LOGIC
-  useEffect(() => {
-    if (!selectedBill) return;
+  // // ✅ UPDATED CALCULATION LOGIC
+  // useEffect(() => {
+  //   if (!selectedBill) return;
 
-    const billAmount = formatAmount(selectedBill.billAmount);
-    const debitAmountVal = parseFloat(formData.debitAmount) || 0;
-    const materialDebitVal = parseFloat(formData.materialDebitAmount5) || 0;
-    const gstRate = parseFloat(formData.gstPercent) || 0;
+  //   const billAmount = formatAmount(selectedBill.billAmount);
+  //   const debitAmountVal = parseFloat(formData.debitAmount) || 0;
+  //   const materialDebitVal = parseFloat(formData.materialDebitAmount5) || 0;
+  //   const gstRate = parseFloat(formData.gstPercent) || 0;
 
-    // ✅ 1. Actual Amount = Bill Amount - Debit Amount - Material Debit
-    const actualAmount = billAmount - debitAmountVal - materialDebitVal;
+  //   // ✅ 1. Actual Amount = Bill Amount - Debit Amount - Material Debit
+  //   const actualAmount = billAmount - debitAmountVal - materialDebitVal;
 
-    // ✅ 2. GST calculation on Actual Amount
-    const gstOnActual = (actualAmount * gstRate) / 100;
-    const cgst = gstOnActual / 2;
-    const sgst = gstOnActual / 2;
+  //   // ✅ 2. GST calculation on Actual Amount
+  //   const gstOnActual = (actualAmount * gstRate) / 100;
+  //   const cgst = gstOnActual / 2;
+  //   const sgst = gstOnActual / 2;
 
-    // ✅ 3. Amount with GST
-    const amountWithGst = actualAmount + gstOnActual;
+  //   // ✅ 3. Amount with GST
+  //   const amountWithGst = actualAmount + gstOnActual;
 
-    // ✅ 4. SD Amount deduction
-    const sd = parseFloat(formData.sdAmount5) || 0;
+  //   // ✅ 4. SD Amount deduction
+  //   const sd = parseFloat(formData.sdAmount5) || 0;
 
-    // ✅ 5. Final Paid Amount (after SD deduction)
-    const finalPaidAmount = amountWithGst - sd;
+  //   // ✅ 5. Final Paid Amount (after SD deduction)
+  //   const finalPaidAmount = amountWithGst - sd;
 
-    // ✅ 6. Up To Date Paid Amount
-    const previousPaid = parseFloat(
-      String(formData.previousBillAmount).replace(/,/g, "") || "0"
-    );
-    const upToDatePaidAmount = (previousPaid + amountWithGst).toFixed(2);
+  //   // ✅ 6. Up To Date Paid Amount
+  //   const previousPaid = parseFloat(
+  //     String(formData.previousBillAmount).replace(/,/g, "") || "0"
+  //   );
+  //   const upToDatePaidAmount = (previousPaid + amountWithGst).toFixed(2);
 
-    // ✅ 7. Balance Amount
-    let balanceAmount = "0";
-    if (
-      formData.workOrderValue &&
-      formData.workOrderValue !== "0" &&
-      formData.contractorName
-    ) {
-      const workOrderValue = formatAmount(formData.workOrderValue);
-      balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(
-        2
-      );
-    }
+  //   // ✅ 7. Balance Amount
+  //   let balanceAmount = "0";
+  //   if (
+  //     formData.workOrderValue &&
+  //     formData.workOrderValue !== "0" &&
+  //     formData.contractorName
+  //   ) {
+  //     const workOrderValue = formatAmount(formData.workOrderValue);
+  //     balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(
+  //       2
+  //     );
+  //   }
 
-    // Update FormData
-    setFormData((prev) => ({
-      ...prev,
-      cgst: cgst.toFixed(2),
-      sgst: sgst.toFixed(2),
-      netAmount: finalPaidAmount.toFixed(2),
-      upToDatePaidAmount: upToDatePaidAmount,
-      balanceAmount: balanceAmount,
-    }));
-  }, [
-    formData.sdAmount5,
-    formData.debitAmount,
-    formData.materialDebitAmount5,
-    formData.gstPercent,
-    formData.workOrderValue,
-    formData.previousBillAmount,
-    formData.contractorName,
-    selectedBill,
-  ]);
+  //   // Update FormData
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     cgst: cgst.toFixed(2),
+  //     sgst: sgst.toFixed(2),
+  //     netAmount: finalPaidAmount.toFixed(2),
+  //     upToDatePaidAmount: upToDatePaidAmount,
+  //     balanceAmount: balanceAmount,
+  //   }));
+  // }, [
+  //   formData.sdAmount5,
+  //   formData.debitAmount,
+  //   formData.materialDebitAmount5,
+  //   formData.gstPercent,
+  //   formData.workOrderValue,
+  //   formData.previousBillAmount,
+  //   formData.contractorName,
+  //   selectedBill,
+  // ]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+
+//////// Material Debit Amount pr gst lagai ha 18% 
+
+// useEffect(() => {
+//   if (!selectedBill) return;
+
+//   const billAmount = formatAmount(selectedBill.billAmount);
+//   const previousPaid = parseFloat(
+//     String(formData.previousBillAmount).replace(/,/g, "") || "0"
+//   );
+//   const otherDebit = parseFloat(formData.debitAmount) || 0;
+//   const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
+//   const gstPercent = parseFloat(formData.gstPercent) || 0;
+//   const sdAmount = parseFloat(formData.sdAmount5) || 0;
+
+//   // 1. Actual Amount (Bill - Other Debit - Material Debit)
+//   const actualAmount = billAmount - otherDebit - materialDebit;
+
+//   // 2. GST jo actual amount par lag rahi hai
+//   const gstOnActual = (actualAmount * gstPercent) / 100;
+
+//   // 3. CGST & SGST (UI ke liye)
+//   const cgst = gstOnActual / 2;
+//   const sgst = gstOnActual / 2;
+
+//   // 4. Amount after GST (Net/Paid amount ke liye)
+//   const amountWithGst = actualAmount + gstOnActual;
+
+//   // 5. Final Paid Amount (user ko dikhane ke liye, SD deduct karke)
+//   const finalPaidAmount = amountWithGst - sdAmount;
+
+//   // ──────────────────────────────────────────────────────────────
+//   // Material Debit par extra GST (sirf jab GST 18% ho)
+//   const materialGstExtra = (materialDebit * gstPercent) / 100;
+//   const materialWithGst = materialDebit + materialGstExtra; // 100% ya 118%
+//   // ──────────────────────────────────────────────────────────────
+
+//   // ──────────────────────────────────────────────────────────────
+//   // Up To Date Paid Amount – SAB ADD HO RAHA HAI (Other Debit bhi)
+//   const upToDatePaidAmount = (
+//     previousPaid +              // Previous paid amount
+//     actualAmount +              // Actual Amount (Bill - Other - Material)
+//     otherDebit +                // ←←← Other Debit bhi add kar diya
+//     materialWithGst +           // Material Debit + uska GST (0% ya 18%)
+//     gstOnActual                 // GST jo actual amount par lagi
+//   ).toFixed(2);
+//   // ──────────────────────────────────────────────────────────────
+
+//   // 6. Balance Amount (Work Order - Up To Date Paid)
+//   let balanceAmount = "0";
+//   if (
+//     formData.workOrderValue &&
+//     formData.workOrderValue !== "0" &&
+//     formData.contractorName
+//   ) {
+//     const workOrderValue = formatAmount(formData.workOrderValue);
+//     balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(2);
+//   }
+
+//   // Form data update
+//   setFormData((prev) => ({
+//     ...prev,
+//     cgst: cgst.toFixed(2),
+//     sgst: sgst.toFixed(2),
+//     netAmount: finalPaidAmount.toFixed(2),
+//     upToDatePaidAmount: upToDatePaidAmount,
+//     balanceAmount: balanceAmount,
+//   }));
+// }, [
+//   selectedBill?.billAmount,
+//   formData.previousBillAmount,
+//   formData.debitAmount,
+//   formData.materialDebitAmount5,
+//   formData.gstPercent,
+//   formData.sdAmount5,
+//   formData.workOrderValue,
+//   formData.contractorName,
+// ]);
+
+
+/////////////////////  Other Debit Amount (Without Material) // Material Debit Amount dono pr gst lagai ha esme 
+
+
+useEffect(() => {
+  if (!selectedBill) return;
+
+  const billAmount = formatAmount(selectedBill.billAmount);
+  const previousPaid = parseFloat(
+    String(formData.previousBillAmount).replace(/,/g, "") || "0"
+  );
+  const otherDebit = parseFloat(formData.debitAmount) || 0;
+  const materialDebit = parseFloat(formData.materialDebitAmount5) || 0;
+  const gstPercent = parseFloat(formData.gstPercent) || 0;
+  const sdAmount = parseFloat(formData.sdAmount5) || 0;
+
+  // 1. Actual Amount (Bill - Other Debit - Material Debit)
+  const actualAmount = billAmount - otherDebit - materialDebit;
+
+  // 2. GST jo actual amount par lag rahi hai
+  const gstOnActual = (actualAmount * gstPercent) / 100;
+
+  // 3. CGST & SGST (UI display ke liye)
+  const cgst = gstOnActual / 2;
+  const sgst = gstOnActual / 2;
+
+  // 4. Amount after adding GST (net amount ke liye)
+  const amountWithGst = actualAmount + gstOnActual;
+
+  // 5. Final Paid Amount (UI mein dikhega, SD deduct karke)
+  const finalPaidAmount = amountWithGst - sdAmount;
+
+  // ──────────────────────────────────────────────────────────────
+  // Material Debit par GST (same rule for both debits)
+  const materialGstExtra = (materialDebit * gstPercent) / 100;
+  const materialWithGst = materialDebit + materialGstExtra; // 100% ya 118%
+
+  // Other Debit par bhi same GST lagao (naya change)
+  const otherDebitGstExtra = (otherDebit * gstPercent) / 100;
+  const otherDebitWithGst = otherDebit + otherDebitGstExtra; // 100% ya 118%
+  // ──────────────────────────────────────────────────────────────
+
+  // ──────────────────────────────────────────────────────────────
+  // Up To Date Paid Amount – FINAL CALCULATION
+  const upToDatePaidAmount = (
+    previousPaid +              // Previous paid
+    actualAmount +              // Actual amount (already debits deduct hue)
+    materialWithGst +           // Material Debit + uska GST
+    otherDebitWithGst +         // Other Debit + uska GST (naya add)
+    gstOnActual                 // GST jo actual amount par lagi
+  ).toFixed(2);
+  // ──────────────────────────────────────────────────────────────
+
+  // Balance Amount
+  let balanceAmount = "0";
+  if (
+    formData.workOrderValue &&
+    formData.workOrderValue !== "0" &&
+    formData.contractorName
+  ) {
+    const workOrderValue = formatAmount(formData.workOrderValue);
+    balanceAmount = (workOrderValue - parseFloat(upToDatePaidAmount)).toFixed(2);
+  }
+
+  // Form data update
+  setFormData((prev) => ({
+    ...prev,
+    cgst: cgst.toFixed(2),
+    sgst: sgst.toFixed(2),
+    netAmount: finalPaidAmount.toFixed(2),
+    upToDatePaidAmount: upToDatePaidAmount,
+    balanceAmount: balanceAmount,
+  }));
+}, [
+  selectedBill?.billAmount,
+  formData.previousBillAmount,
+  formData.debitAmount,
+  formData.materialDebitAmount5,
+  formData.gstPercent,
+  formData.sdAmount5,
+  formData.workOrderValue,
+  formData.contractorName,
+]);
+
+
 
   // ✅ UPDATED handleSave function
   const handleSave = async () => {

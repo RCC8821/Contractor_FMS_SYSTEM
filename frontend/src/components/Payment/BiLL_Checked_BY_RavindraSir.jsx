@@ -73,6 +73,7 @@ const BILL_Checked_BY_RavindraSir = () => {
                   <th className="border border-gray-300 px-4 py-4 text-left font-bold uppercase">Attendance Sheet</th>
                   <th className="border border-gray-300 px-4 py-4 text-left font-bold uppercase">RCC Summary No</th>
                   <th className="border border-gray-300 px-4 py-4 text-left font-bold uppercase">RCC Summary PDF</th>
+                  <th className="border border-gray-300 px-4 py-4 text-left font-bold uppercase">Work Order PDE</th>
                   <th className="border border-gray-300 px-4 py-4 text-left font-bold uppercase">Bill Amount</th>
 
                   {/* ---------- NEW COLUMNS AFTER BILL AMOUNT ---------- */}
@@ -126,6 +127,9 @@ const BILL_Checked_BY_RavindraSir = () => {
                       <td className="border border-gray-300 px-4 py-4 text-center">{bill.rccSummarySheetNo || "-"}</td>
                       <td className="border border-gray-300 px-4 py-4 text-center">
                         {bill.rccSummarySheetUrl ? <a href={bill.rccSummarySheetUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View PDF</a> : "-"}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-4 text-center">
+                        {bill.workOrderUrl ? <a href={bill.workOrderUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">View PDF</a> : "-"}
                       </td>
                       <td className="border border-gray-300 px-4 py-4 font-bold text-green-600 text-right pr-6">
                         ₹{formatAmount(bill.billAmount).toLocaleString("en-IN")}

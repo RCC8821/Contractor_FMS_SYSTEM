@@ -27,7 +27,7 @@ const Dashboard = () => {
   const [dropdownOpen, setDropdownOpen] = useState({
     fms: false,
     billing: false,
-    payment: false, // lowercase
+    payment: false, 
   });
 
   const { userType, token } = useSelector((state) => state.auth);
