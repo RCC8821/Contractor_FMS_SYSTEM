@@ -1,7 +1,5 @@
 
 
-
-
 // import React, { useState, useEffect, useMemo, useRef } from "react";
 // import { useGetPendingPaymentsQuery, useUpdatePaymentsMutation } from "../../features/Payment/Payment_Tally_Slice";
 // import { X, CheckSquare, Square, FileText, ChevronDown } from "lucide-react";
@@ -164,7 +162,7 @@
 //         PAYMENT_DATE_8: "",
 //     });
 
-//     const bankOptions = ["SVC Bank", "HDFC Bank"];
+//     const bankOptions = ["SVC Main A/C (202) ", "SVC VENDOR PAY A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC  Scope Clg(215)","ICICI RNTU(914)"];
 //     const modeOptions = ["Cheque", "NEFT", "RTGS"];
 
 //     // Auto-fill Contractor Name from selected Firm
@@ -179,7 +177,6 @@
 //         }
 //     }, [selectedFirm, uniqueContractors]);
 
-//     // Dynamic label
 //     const handleGlobalInputChange = (field, value) => {
 //         setGlobalPaymentData(prev => ({ ...prev, [field]: value }));
 
@@ -336,9 +333,23 @@
 //         }, 0);
 //     }, [selectedBillIds, calculatedBillsData]);
 
+//     // Submit with validation for Current Paid Amount
 //     const handleSubmitAll = async () => {
+//         // Global fields validation
 //         if (!globalPaymentData.BANK_DETAILS_8 || !globalPaymentData.PAYMENT_MODE_8 || !globalPaymentData.PAYMENT_DATE_8) {
 //             alert("Please fill all Global Payment Details (Bank, Mode, Date)");
+//             return;
+//         }
+
+//         // Current Paid Amount validation for all selected bills
+//         const emptyPaidBills = selectedBillIds.filter(billId => {
+//             const currentPaid = getNumericValue(billId, 'paid_amount_8');
+//             const inputValue = billInputData[billId]?.paid_amount_8;
+//             return !inputValue || inputValue.trim() === "" || currentPaid === 0;
+//         });
+
+//         if (emptyPaidBills.length > 0) {
+//             alert("Please enter a valid Current Paid Amount (8) for all selected bills before submitting.");
 //             return;
 //         }
 
@@ -509,7 +520,6 @@
 //                                             </div>
 
 //                                             <div className="p-5">
-//                                                 {/* सभी पुरानी InfoFields वापस */}
 //                                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-4 mb-4">
 //                                                     <InfoField label="Contractor Bill No" value={bill.contractorBillNo} />
 //                                                     <InfoField label="Work Name" value={bill.workName} className="col-span-2" />
@@ -671,7 +681,6 @@
 //                                 })}
 //                             </div>
 
-//                             {/* Grand Total & Global Payment Section (unchanged) */}
 //                             {selectedBillIds.length > 0 && (
 //                                 <div className="max-w-[1600px] mx-auto bg-green-50 p-6 rounded-xl shadow-lg border-2 border-green-400 my-8">
 //                                     <div className="flex justify-between items-center">
@@ -732,6 +741,10 @@
 
 
 
+/////////////////////////////////
+
+
+
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useGetPendingPaymentsQuery, useUpdatePaymentsMutation } from "../../features/Payment/Payment_Tally_Slice";
@@ -770,29 +783,53 @@ const PaymentInputComponent = ({
     const handleChange = (e) => {
         if (readOnly) return;
         
-        let value = e.target.value;
-        let finalValue = value;
+        const value = e.target.value;
 
-        if (options === null && isNumeric) {
-            finalValue = value.replace(/[^0-9.]/g, '');
+        if (options !== null || isDate || !isNumeric) {
+            setLocalValue(value);
+            if (options !== null) onValueChange(id, value);
+            return;
         }
 
-        setLocalValue(finalValue);
-        if (options !== null) {
-            onValueChange(id, finalValue);
+        if (/^-?[\d.]*$/.test(value)) {
+            setLocalValue(value);
         }
     };
 
     const handleBlur = () => {
         if (readOnly) return;
-        if (options === null) {
+
+        if (options !== null || isDate || !isNumeric) {
             onValueChange(id, localValue);
+            return;
         }
+
+        let val = localValue.trim();
+
+        if (val === "" || val === "-" || val === ".") {
+            val = "0.00";
+        } else {
+            let num = parseFloat(val);
+            if (isNaN(num)) {
+                val = "0.00";
+            } else {
+                if (label.includes("Round Up")) {
+                    num = Math.max(-9, Math.min(9, num));
+                }
+                val = num.toFixed(2);
+            }
+        }
+
+        setLocalValue(val);
+        onValueChange(id, val);
     };
 
     const isDropdown = options !== null;
     const inputStyle = `w-full text-lg font-semibold border-b-2 outline-none py-1 transition duration-150 
-        ${color === "blue" ? "border-blue-300 focus:border-blue-600 text-blue-700" : (color === "green" ? "border-green-300 focus:border-green-600 text-green-700" : "border-gray-300 focus:border-blue-500")}
+        ${color === "blue" ? "border-blue-300 focus:border-blue-600 text-blue-700" : 
+          color === "green" ? "border-green-300 focus:border-green-600 text-green-700" : 
+          color === "purple" ? "border-purple-300 focus:border-purple-600 text-purple-700" : 
+          "border-gray-300 focus:border-blue-500"}
         ${isDropdown ? 'appearance-none' : ''}
         ${readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}
     `;
@@ -895,10 +932,9 @@ const Payment_Tally = () => {
         PAYMENT_DATE_8: "",
     });
 
-    const bankOptions = ["SVC Main A/C (202) ", "SVC Vendor Pay A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC  Scope Clg(215)","ICICI RNTU(914)"];
+    const bankOptions = ["SVC Main A/C (202) ", "SVC VENDOR PAY A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC  Scope Clg(215)","ICICI RNTU(914)"];
     const modeOptions = ["Cheque", "NEFT", "RTGS"];
 
-    // Auto-fill Contractor Name from selected Firm
     useEffect(() => {
         if (selectedFirm) {
             const contractor = uniqueContractors.find((c) => c.firmName === selectedFirm);
@@ -964,6 +1000,7 @@ const Payment_Tally = () => {
                 [billId]: { 
                     tds_amount_8: tdsValue,
                     paid_amount_8: prev[billId]?.paid_amount_8 || "",
+                    round_up: prev[billId]?.round_up || "",
                     latestPaidAmount8: latestPaid,
                     latestBalanceAmount8: latestBalance,
                     latestTDSAmount8: latestTDS,
@@ -1009,6 +1046,7 @@ const Payment_Tally = () => {
             }
             
             const currentPaidAmount = getNumericValue(uniqueId, 'paid_amount_8');
+            const roundUpValue = parseFloat(inputs.round_up || "0") || 0;
             
             let payableAmount = 0;
             if (latestBalance > 0) {
@@ -1019,12 +1057,15 @@ const Payment_Tally = () => {
             
             const totalPaid = latestPaid + currentPaidAmount;
             
-            let balanceAmount = billAmount - (totalPaid + tdsAmount);
+            // **Yahan change: balanceAmount ab round up ke saath calculate ho raha hai**
+            let balanceAmount = billAmount - (totalPaid + tdsAmount) + roundUpValue;
             
-            const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS;
+            const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS + roundUpValue;
             if (Math.abs(totalAllAmounts - billAmount) <= 0.01) {
                 balanceAmount = 0;
             }
+
+            const displayBalance = balanceAmount;  // ab display aur actual same hain
 
             let paidAmount8Value = totalPaid;
             if (hasAnyPreviousData) {
@@ -1040,14 +1081,15 @@ const Payment_Tally = () => {
                 latestTDS,
                 payableAmount,
                 totalPaid,
-                balanceAmount,
+                balanceAmount,          // ← ab round up ke saath
+                displayBalance,
+                roundUpValue,
                 totalAllAmounts,
                 paidAmount8Value,
                 hasAnyPreviousData,
                 displayLatestPaid: latestPaid,
                 displayPayableAmount: payableAmount,
                 displayTotalPaid: totalPaid,
-                displayBalance: balanceAmount,
                 displayTDS: tdsAmount,
                 displayBillAmount: billAmount,
                 hasPreviousTDS: latestTDS > 0,
@@ -1066,15 +1108,12 @@ const Payment_Tally = () => {
         }, 0);
     }, [selectedBillIds, calculatedBillsData]);
 
-    // Submit with validation for Current Paid Amount
     const handleSubmitAll = async () => {
-        // Global fields validation
         if (!globalPaymentData.BANK_DETAILS_8 || !globalPaymentData.PAYMENT_MODE_8 || !globalPaymentData.PAYMENT_DATE_8) {
             alert("Please fill all Global Payment Details (Bank, Mode, Date)");
             return;
         }
 
-        // Current Paid Amount validation for all selected bills
         const emptyPaidBills = selectedBillIds.filter(billId => {
             const currentPaid = getNumericValue(billId, 'paid_amount_8');
             const inputValue = billInputData[billId]?.paid_amount_8;
@@ -1119,7 +1158,7 @@ const Payment_Tally = () => {
                 tdsAmount8: calc.tdsAmount || 0,
                 payableAmount8: calc.payableAmount || 0,
                 paidAmount8: (calc.latestPaid || 0) + (calc.currentPaidAmount || 0),
-                balanceAmount8: calc.balanceAmount || 0,
+                balanceAmount8: calc.balanceAmount || 0,   // ← ab round up ke saath jaayega sheet mein
                 
                 PAID_AMOUNT_8: paidForPaymentSheet,
                 
@@ -1147,7 +1186,6 @@ const Payment_Tally = () => {
         }
     };
 
-    // Unique firms for dropdown
     const uniqueFirms = [...new Set(uniqueContractors.map(c => c.firmName))].sort();
 
     return (
@@ -1345,12 +1383,12 @@ const Payment_Tally = () => {
                                                         </div>
                                                     )}
                                                     
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
                                                         <PaymentInputComponent 
                                                             label="TDS Amount (8)" 
                                                             id={uniqueId} 
                                                             initialValue={inputs.tds_amount_8} 
-                                                            onValueChange={(id, v) => handleInputChange(id, "tds_amount_8", v)} 
+                                                            onValueChange={(id, v) => handleInputChange(uniqueId, "tds_amount_8", v)} 
                                                             color="blue" 
                                                             isNumeric={true} 
                                                             placeholder={hasPreviousTDS ? "0 (Previous TDS Applied)" : "Enter TDS Amount"}
@@ -1365,15 +1403,24 @@ const Payment_Tally = () => {
                                                             label="Current Paid Amount (8)" 
                                                             id={uniqueId} 
                                                             initialValue={inputs.paid_amount_8} 
-                                                            onValueChange={(id, v) => handleInputChange(id, "paid_amount_8", v)} 
+                                                            onValueChange={(id, v) => handleInputChange(uniqueId, "paid_amount_8", v)} 
                                                             color="blue" 
                                                             isNumeric={true} 
                                                             placeholder="Enter Paid Amount"
                                                         />
+                                                        <PaymentInputComponent 
+                                                            label="Round Up (±9)" 
+                                                            id={uniqueId} 
+                                                            initialValue={inputs.round_up ?? ""} 
+                                                            onValueChange={(id, v) => handleInputChange(uniqueId, "round_up", v)} 
+                                                            color="purple" 
+                                                            isNumeric={true} 
+                                                            placeholder="-9 to +9 (e.g. -0.1, 0.099, -3.50, 8.99)"
+                                                        />
                                                         <PaymentInput 
                                                             label="New Balance Amount" 
-                                                            value={billCalculations.balanceAmount || 0} 
-                                                            color={billCalculations.balanceAmount === 0 ? "green" : "red"} 
+                                                            value={billCalculations.displayBalance ?? billCalculations.balanceAmount ?? 0} 
+                                                            color={billCalculations.displayBalance === 0 ? "green" : (billCalculations.displayBalance > 0 ? "red" : "orange")} 
                                                         />
                                                     </div>
                                                     
@@ -1382,7 +1429,7 @@ const Payment_Tally = () => {
                                                             <div className="flex items-center gap-2">
                                                                 <div className="text-green-700 font-bold">✓ AUTOMATIC ZERO BALANCE</div>
                                                                 <div className="text-green-600 text-sm">
-                                                                    Prev Paid + Current Paid + Prev TDS = Bill Amount
+                                                                    Prev Paid + Current Paid + Prev TDS + Round Up = Bill Amount
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1398,6 +1445,12 @@ const Payment_Tally = () => {
                                                             )}
                                                         </div>
                                                     </div>
+                                                    
+                                                    {Math.abs(billCalculations.roundUpValue) > 0.0001 && (
+                                                        <div className="mt-3 text-sm text-purple-700">
+                                                            Adjustment applied to balance: {billCalculations.roundUpValue > 0 ? "+" : ""}{billCalculations.roundUpValue.toFixed(2)}
+                                                        </div>
+                                                    )}
                                                     
                                                     <div className="mt-6">
                                                         <button 
