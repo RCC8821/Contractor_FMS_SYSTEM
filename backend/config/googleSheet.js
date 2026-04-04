@@ -26,6 +26,8 @@ const sheets = google.sheets({ version: 'v4', auth });
 const drive = google.drive({ version: "v3", auth, supportsAllDrives: true });
 const spreadsheetId = process.env.SPREADSHEET_ID;
 const workSpredSheetId = process.env.SPREADSHEETWORKSHEET_ID
-module.exports = { sheets, drive, spreadsheetId ,workSpredSheetId}; // Export drive
+const DebitID = process.env.SPREADSHEET_DEBIT_ID
+
+module.exports = { sheets, drive, spreadsheetId ,workSpredSheetId,DebitID}; // Export drive
 
 

@@ -16,6 +16,15 @@ import {billFinalByOfficeApi} from './features/Payment/Bill_final_By_Office_Slic
 import { billCheckedByRavindraSirApi } from './features/Payment/BiLL_Checked_BY_RavindraSir_Slice';
 import {billCheckedByAshokSirApi} from './features/Payment/BiLL_Checked_BY_AshokSir_Slice'
 import  {paymentTallyApi}  from './features/Payment/Payment_Tally_Slice'
+
+
+///// debit 
+
+
+import {materialSliceApi} from './features/debit/materialSlice'
+
+
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -33,6 +42,12 @@ export const store = configureStore({
     [billCheckedByRavindraSirApi.reducerPath]: billCheckedByRavindraSirApi.reducer,
     [billCheckedByAshokSirApi.reducerPath]: billCheckedByAshokSirApi.reducer,
     [paymentTallyApi.reducerPath]: paymentTallyApi.reducer,
+
+    /////  debit
+
+    [materialSliceApi.reducerPath]: materialSliceApi.reducer,
+
+
     
 
   },
@@ -52,5 +67,10 @@ export const store = configureStore({
       .concat(billCheckedByRavindraSirApi.middleware)
       .concat(billCheckedByAshokSirApi.middleware)
       .concat(paymentTallyApi.middleware)
+
+      /// debit 
+
+      .concat(materialSliceApi.middleware)
+
    
 });

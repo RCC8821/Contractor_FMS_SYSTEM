@@ -22,6 +22,16 @@ import BiLL_Checked_BY_RavindraSir from "./components/Payment/BiLL_Checked_BY_Ra
 import BiLL_Checked_BY_AshokSir from "./components/Payment/BiLL_Checked_BY_AshokSir";
 import Payment_Tally from "./components/Payment/Payment_Tally";
 
+
+
+///////// Debit 
+
+
+import Material from "./components/Debit/Material";
+import Labour from "./components/Debit/Labour";
+
+
+
 const ProtectedRoute = ({ children }) => {
   const { token } = useSelector((state) => state.auth);
   return token ? children : <Navigate to="/" />;
@@ -78,6 +88,12 @@ const App = () => {
             element={<BiLL_Checked_BY_AshokSir />}
           />
           <Route path="Payment_Tally" element={<Payment_Tally />} />
+
+          ////// Debit
+
+          <Route path="Material_debit" element={<Material/>}/>
+          <Route path="Labour_debit" element={<Labour/>}/>
+
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

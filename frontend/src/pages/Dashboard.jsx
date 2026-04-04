@@ -162,6 +162,24 @@ const Dashboard = () => {
       allowedUserTypes: ["admin","Govind Ram Nagar"],
       category: "payment",
     },
+
+    // ============== DEBIT PAGES ==============
+{
+  id: "Material_debit",
+  name: "Material",
+  icon: FileText,
+  path: "/dashboard/Material_debit",
+  allowedUserTypes: ["admin"],
+  category: "debit",
+},
+{
+  id: "Labour_debit",
+  name: "Labour",
+  icon: FileText,
+  path: "/dashboard/Labour_debit",
+  allowedUserTypes: ["admin"],
+  category: "debit",
+},
     
   ];
 
@@ -174,6 +192,7 @@ const Dashboard = () => {
   const fmsPages = getPagesByCategory("fms");
   const billingPages = getPagesByCategory("billing");
   const paymentPages = getPagesByCategory("payment"); // lowercase
+  const debitPages = getPagesByCategory("debit");
 
   // ============== MENU ITEMS (Payment ID fixed to lowercase) ==============
   const menuItems = [
@@ -198,6 +217,13 @@ const Dashboard = () => {
       pages: paymentPages,
       gradient: "from-emerald-500 to-teal-500",
     },
+    {
+  id: "debit",
+  name: "Debit",
+  icon: DollarSign,
+  pages: debitPages,
+  gradient: "from-orange-500 to-red-500",
+},
     {
       id: "sheet-link",
       name: "Sheet Link",

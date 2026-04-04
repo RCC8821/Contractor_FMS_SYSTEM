@@ -28,6 +28,12 @@ const Final_bill_Checked_AshokSir = require('./All_Fms_Api/Payment/Final_Bill_Ch
 const GetPayment = require('./All_Fms_Api/Payment/Payment')
 
 
+//////  Debit 
+
+
+const MaterialDebit = require('./All_Fms_Api/Debit/MaterialDebit')
+// const LabourDebit = require('./All_Fms_Api/Debit/LabourDebit')
+
 const app = express();
 // 1. CORS (Pehle daalo)
 app.use(cors({
@@ -79,6 +85,11 @@ app.use('/api', BILL_FINAL_BY_OFFICE);
 app.use('/api',Payment_final_bill_Checked)
 app.use('/api',Final_bill_Checked_AshokSir)
 app.use('/api',GetPayment)
+
+
+///// Debit 
+
+app.use('/api/debit',MaterialDebit)
 // 7. Health Check
 app.get('/', (req, res) => {
   res.json({ message: 'FMS Backend Running!', time: new Date().toISOString() });
