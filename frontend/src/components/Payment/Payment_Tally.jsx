@@ -964,7 +964,7 @@ const Payment_Tally = () => {
         PAYMENT_DETAILS_8: "",
         PAYMENT_DATE_8: "",
     });
-    const bankOptions = ["SVC Main A/C (202) ", "SVC VENDOR PAY A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC Scope Clg(215)","ICICI RNTU(914)"];
+    const bankOptions = ["SVC Main A/C (202) ", "SVC VENDOR PAY A/C(328)","HDFC Kabir Ahuja(341)","HDFC Rajeev Abott(313)","HDFC Madhav Gupta (375)","HDFC Scope Clg(215)","ICICI RNTU(914)","SVC Udit Agrawal(696)","HDFC Alka Upadhyay(902)"];
     const modeOptions = ["Cheque", "NEFT", "RTGS"];
 
     useEffect(() => {
