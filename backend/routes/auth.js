@@ -10,7 +10,7 @@ const router = express.Router();
 // Allowed user types
 const ALLOWED_USER_TYPES = [
   'Admin',
-  'Aakash Chouhan',
+  'Mohit Mishra',
   'Govind Ram Nagar',
   'Ravindra Singh',
   'Ashok Sir'

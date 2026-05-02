@@ -108,7 +108,7 @@ const Dashboard = () => {
       name: "Bill Entry Form",
       icon: Receipt,
       path: "/dashboard/Bill_Tally_form",
-      allowedUserTypes: ["admin" ,"Aakash Chouhan"],
+      allowedUserTypes: ["admin" ,"Mohit Mishra"],
       category: "billing",
     },
     {
@@ -116,7 +116,7 @@ const Dashboard = () => {
       name: "Bill Checked by SITE ENGINEER",
       icon: FileText,
       path: "/dashboard/Bill_Checked",
-      allowedUserTypes: ["admin","Aakash Chouhan"],
+      allowedUserTypes: ["admin","Mohit Mishra"],
       category: "billing",
     },
     {
@@ -124,7 +124,7 @@ const Dashboard = () => {
       name: "Bill Checked By Office",
       icon: FileText,
       path: "/dashboard/Bill_Checked_By_Office",
-      allowedUserTypes: ["admin","Aakash Chouhan"],
+      allowedUserTypes: ["admin","Mohit Mishra"],
       category: "billing",
     },
     
@@ -134,7 +134,7 @@ const Dashboard = () => {
       name: "BILL FINAL BY OFFICE",
       icon: FileText,
       path: "/dashboard/BILL_FINAL_BY_OFFICE",
-      allowedUserTypes: ["admin","Aakash Chouhan",],
+      allowedUserTypes: ["admin","Mohit Mishra",],
       category: "payment",
     },
 
@@ -169,7 +169,7 @@ const Dashboard = () => {
   name: "Material",
   icon: FileText,
   path: "/dashboard/Material_debit",
-  allowedUserTypes: ["admin"],
+  allowedUserTypes: ["admin","Mohit Mishra"],
   category: "debit",
 },
 {
@@ -177,7 +177,7 @@ const Dashboard = () => {
   name: "Labour",
   icon: FileText,
   path: "/dashboard/Labour_debit",
-  allowedUserTypes: ["admin"],
+  allowedUserTypes: ["admin","Mohit Mishra"],
   category: "debit",
 },
     
