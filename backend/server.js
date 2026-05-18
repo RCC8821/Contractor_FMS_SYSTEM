@@ -32,7 +32,7 @@ const GetPayment = require('./All_Fms_Api/Payment/Payment')
 
 
 const MaterialDebit = require('./All_Fms_Api/Debit/MaterialDebit')
-// const LabourDebit = require('./All_Fms_Api/Debit/LabourDebit')
+const LabourDebit = require('./All_Fms_Api/Debit/LabourDebit')
 
 const app = express();
 // 1. CORS (Pehle daalo)
@@ -90,6 +90,7 @@ app.use('/api',GetPayment)
 ///// Debit 
 
 app.use('/api/debit',MaterialDebit)
+app.use('/api/debit',LabourDebit)
 // 7. Health Check
 app.get('/', (req, res) => {
   res.json({ message: 'FMS Backend Running!', time: new Date().toISOString() });

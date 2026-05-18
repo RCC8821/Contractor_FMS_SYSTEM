@@ -22,6 +22,7 @@ import  {paymentTallyApi}  from './features/Payment/Payment_Tally_Slice'
 
 
 import {materialSliceApi} from './features/debit/materialSlice'
+import {labourSliceApi} from './features/debit/labourSlice'
 
 
 
@@ -46,6 +47,7 @@ export const store = configureStore({
     /////  debit
 
     [materialSliceApi.reducerPath]: materialSliceApi.reducer,
+    [labourSliceApi.reducerPath]: labourSliceApi.reducer,
 
 
     
@@ -71,6 +73,7 @@ export const store = configureStore({
       /// debit 
 
       .concat(materialSliceApi.middleware)
+      .concat(labourSliceApi.middleware)
 
    
 });
