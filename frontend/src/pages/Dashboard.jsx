@@ -159,7 +159,7 @@ const Dashboard = () => {
       name: "Payment_Tally",
       icon: DollarSign,
       path: "/dashboard/Payment_Tally",
-      allowedUserTypes: ["admin","Govind Ram Nagar"],
+      allowedUserTypes: ["admin","Ramprasad"],
       category: "payment",
     },
 
