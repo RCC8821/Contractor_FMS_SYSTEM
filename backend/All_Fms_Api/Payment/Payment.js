@@ -2,119 +2,38 @@ const express = require("express");
 const { sheets, spreadsheetId } = require("../../config/googleSheet");
 const router = express.Router();
 
+// GET /Get-Bank-Names - Project_Data sheet se M column ka data fetch karo
+router.get("/Get-Bank-Names", async (req, res) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Project_Data!M:M", // Sirf M column
+    });
 
-// router.get("/Get-Payment", async (req, res) => {
-//   try {
-//     const response = await sheets.spreadsheets.values.get({
-//       spreadsheetId,
-//       range: "Contractor_Payment_FMS!A7:BE",
-//     });
+    const rows = response.data.values || [];
 
-//     const paymentSheetResponse = await sheets.spreadsheets.values.get({
-//       spreadsheetId,
-//       range: "Payment_Sheet!A:L",
-//     });
+    // Header skip karo (row 1), empty values filter karo, duplicates remove karo
+    const bankNames = rows
+      .slice(1) // First row = header skip
+      .map((row) => (row[0] || "").toString().trim())
+      .filter((name) => name !== "") // Empty remove
+      .filter((name, index, self) => self.indexOf(name) === index); // Unique only
 
-//     let rows = response.data.values || [];
-//     let paymentRows = paymentSheetResponse.data.values || [];
+    res.json({
+      success: true,
+      bankNames: bankNames,
+      total: bankNames.length,
+    });
+  } catch (error) {
+    console.error("Error in /Get-Bank-Names:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch bank names",
+      details: error.message,
+    });
+  }
+});
 
-//     if (rows.length > 0) rows = rows.slice(1);
-
-//     const filteredData = rows
-//       .filter((row) => {
-//         const planned7 = (row[47] || "").toString().trim();
-//         const currentBillNo = (row[1] || "").toString().trim();
-
-//         if (planned7 === "") return false;
-
-//         let isBalanceZero = false;
-
-//         for (let i = paymentRows.length - 1; i >= 0; i--) {
-//           const pRow = paymentRows[i];
-//           const pBillNo = (pRow[5] || "").toString().trim();
-//           const pBalance = (pRow[11] || "").toString().trim();
-
-//           if (pBillNo === currentBillNo) {
-//             if (
-//               pBalance === "0" ||
-//               pBalance === "0.00" ||
-//               parseFloat(pBalance || 0) === 0
-//             ) {
-//               isBalanceZero = true;
-//             }
-//             break;
-//           }
-//         }
-//         return !isBalanceZero;
-//       })
-//       .map((row) => {
-//         const currentBillNo = (row[1] || "").toString().trim();
-
-//         let latestPaidAmount = "0";
-//         let latestBalanceAmount = "0";
-//         let latestTDSAmount = "0";
-
-//         for (let i = paymentRows.length - 1; i >= 0; i--) {
-//           const pRow = paymentRows[i];
-//           if ((pRow[5] || "").toString().trim() === currentBillNo) {
-//             latestPaidAmount = pRow[10] || "0";
-//             latestBalanceAmount = pRow[11] || "0";
-//             latestTDSAmount = pRow[8] || "0";
-//             break;
-//           }
-//         }
-
-//         return {
-//           rccBillNo: currentBillNo,
-//           projectId: row[2] || "",
-//           projectName: row[3] || "",
-//           siteEngineer: row[4] || "",
-//           contractorName: row[5] || "",
-//           firmName: row[6] || "",
-//           workName: row[7] || "",
-//           contractorBillNo: row[8] || "",
-//           billDate: row[9] || "",
-//           billUrl: row[10] || "",
-//           WorkOrderNo: row[16] || "",
-//           WorkOrderValue: row[18] || "",
-//           billAmount: row[51] || "",
-//           NETAMOUNTCurrentAmount: row[26] || "",
-//           planned7: row[47] || "",
-//           actual7: row[48] || "",
-
-//           latestPaidAmount8: latestPaidAmount,
-//           latestBalanceAmount8: latestBalanceAmount,
-//           latestTDSAmount8: latestTDSAmount,
-//         };
-//       });
-
-//     const uniqueContractors = [];
-//     const seen = new Set();
-//     filteredData.forEach((item) => {
-//       const key = `${item.contractorName}||${item.firmName}`;
-//       if (!seen.has(key) && item.contractorName && item.firmName) {
-//         seen.add(key);
-//         uniqueContractors.push({
-//           contractorName: item.contractorName,
-//           firmName: item.firmName,
-//         });
-//       }
-//     });
-
-//     res.json({
-//       success: true,
-//       data: filteredData,
-//       uniqueContractors: uniqueContractors,
-//     });
-//   } catch (error) {
-//     console.error("Error in /Get-Payment:", error.message);
-//     res.status(500).json({
-//       success: false,
-//       error: "Failed to fetch payment data",
-//       details: error.message,
-//     });
-//   }
-// });
 
 
 router.get("/Get-Payment", async (req, res) => {
