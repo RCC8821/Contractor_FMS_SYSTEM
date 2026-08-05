@@ -1,5 +1,971 @@
 
 
+// const express = require('express');
+// const { sheets, drive, DebitID } = require('../../config/googleSheet');
+// const { Readable } = require('stream');
+// const router = express.Router();
+
+// const { jsPDF } = require('jspdf');
+// const autoTable = require('jspdf-autotable').default || require('jspdf-autotable');
+// console.log('jsPDF and jspdf-autotable loaded successfully');
+
+// router.use((req, res, next) => {
+//   if (req.method === 'OPTIONS') return res.status(200).end();
+//   next();
+// });
+
+// // ─── Helper: Upload PDF ───────────────────────────────────────────────────────
+// async function uploadPDFToGoogleDrive(pdfBuffer, fileName) {
+//   const fileStream = new Readable();
+//   fileStream.push(pdfBuffer);
+//   fileStream.push(null);
+
+//   const response = await drive.files.create({
+//     resource: {
+//       name: fileName,
+//       parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
+//     },
+//     media: { mimeType: 'application/pdf', body: fileStream },
+//     fields: 'id, webViewLink',
+//     supportsAllDrives: true,
+//   });
+
+//   await drive.permissions.create({
+//     fileId: response.data.id,
+//     requestBody: { role: 'reader', type: 'anyone' },
+//     supportsAllDrives: true,
+//   });
+
+//   return `https://drive.google.com/file/d/${response.data.id}/view?usp=sharing`;
+// }
+
+// // ─── Helper: Generate PDF ─────────────────────────────────────────────────────
+// function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
+//   const doc = new jsPDF();
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+
+//   const clean = (val) => (val || 'N/A').toString().trim().replace(/[^\x20-\x7E]/g, '');
+
+//   // ── Header Section ──────────────────────────────────────────────────────
+//   doc.setDrawColor(41, 128, 185);
+//   doc.setLineWidth(2);
+//   doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+
+//   doc.setTextColor(0, 0, 0);
+//   doc.setFontSize(18);
+//   doc.setFont('helvetica', 'bold');
+//   doc.text('R.C.C Infrastructures', pageWidth / 2, 15, { align: 'center' });
+
+//   doc.setFontSize(9);
+//   doc.setFont('helvetica', 'normal');
+//   doc.text('310 Saket Nagar, 9B Near Sagar Public School, Bhopal, 462026', pageWidth / 2, 22, { align: 'center' });
+//   doc.text('Contact: 7869962504 | Email: mayank@rcinfrastructure.com', pageWidth / 2, 28, { align: 'center' });
+//   doc.text('GST: 23ABHFR3130L1ZA', pageWidth / 2, 34, { align: 'center' });
+
+//   doc.setDrawColor(200, 200, 200);
+//   doc.setLineWidth(0.5);
+//   doc.line(15, 38, pageWidth - 15, 38);
+
+//   doc.setFontSize(15);
+//   doc.setFont('helvetica', 'bold');
+//   doc.setTextColor(220, 53, 69);
+//   doc.text('CONTRACTOR MATERIAL DEBIT REPORT', pageWidth / 2, 50, { align: 'center' });
+
+//   doc.setDrawColor(220, 53, 69);
+//   doc.setLineWidth(1);
+//   doc.line(30, 53, pageWidth - 30, 53);
+
+//   doc.setTextColor(0, 0, 0);
+//   doc.setFontSize(10);
+
+//   // ── Get Unique Values ───────────────────────────────────────────────────
+//   const uniquePOs = [...new Set(selectedRows.map(r => clean(r.poNo)))];
+//   const uniqueProjects = [...new Set(selectedRows.map(r => clean(r.projectName)))];
+//   const uniqueContractors = [...new Set(selectedRows.map(r => clean(r.contractorName)))];
+//   const uniqueMaterialTypes = [...new Set(selectedRows.map(r => clean(r.materialType)))].filter(t => t && t !== 'N/A');
+
+//   console.log(`[PDF] Unique Material Types found:`, uniqueMaterialTypes);
+
+//   const genDate = new Date().toLocaleDateString('en-GB', { 
+//     day: '2-digit', month: 'short', year: 'numeric' 
+//   }).replace(/ /g, '-');
+
+//   // ── Info Section ────────────────────────────────────────────────────────
+//   let infoY = 65;
+  
+//   let materialTypeDisplay = 'N/A';
+//   if (uniqueMaterialTypes.length === 1) {
+//     materialTypeDisplay = uniqueMaterialTypes[0];
+//   } else if (uniqueMaterialTypes.length > 1) {
+//     materialTypeDisplay = `${uniqueMaterialTypes[0]} (+${uniqueMaterialTypes.length - 1} more)`;
+//   }
+  
+//   const infoLines = [
+//     { 
+//       l: 'Project Name:', 
+//       v: uniqueProjects.length > 1 ? `${uniqueProjects[0]} (+${uniqueProjects.length - 1} more)` : uniqueProjects[0] || 'N/A', 
+//       l2: 'Total POs:', 
+//       v2: `${uniquePOs.length} PO(s)` 
+//     },
+//     { 
+//       l: 'Contractor:', 
+//       v: uniqueContractors.length > 1 ? `${uniqueContractors[0]} (+${uniqueContractors.length - 1} more)` : uniqueContractors[0] || 'N/A', 
+//       l2: 'Actual Date:', 
+//       v2: clean(actualDate) 
+//     },
+//     { 
+//       l: 'Material Type:', 
+//       v: materialTypeDisplay, 
+//       l2: 'Debit UID:', 
+//       v2: debitUID 
+//     },
+//     { 
+//       l: 'Report Date:', 
+//       v: genDate, 
+//       l2: 'Total Materials:', 
+//       v2: `${selectedRows.length} Item(s)` 
+//     },
+//   ];
+
+//   infoLines.forEach(({ l, v, l2, v2 }) => {
+//     doc.setFont('helvetica', 'bold'); 
+//     doc.text(l, 15, infoY);
+//     doc.setFont('helvetica', 'normal'); 
+//     doc.text(v.substring(0, 40), 55, infoY);
+//     doc.setFont('helvetica', 'bold'); 
+//     doc.text(l2, 115, infoY);
+//     doc.setFont('helvetica', 'normal'); 
+//     doc.text(v2.substring(0, 30), 152, infoY);
+//     infoY += 7;
+//   });
+
+//   // ── Material Details Table ──────────────────────────────────────────────
+//   doc.setFontSize(12);
+//   doc.setFont('helvetica', 'bold');
+//   doc.setTextColor(220, 53, 69);
+//   doc.text('Material Details', 15, infoY + 5);
+//   doc.setTextColor(0, 0, 0);
+
+//   const sortedRows = [...selectedRows].sort((a, b) => {
+//     return clean(a.poNo).localeCompare(clean(b.poNo));
+//   });
+
+//   const tableBody = sortedRows.map((row, i) => [
+//     i + 1,
+//     clean(row.poNo),
+//     clean(row.poDate),
+//     clean(row.materialName).substring(0, 22),
+//     clean(row.requiredQty),
+//     clean(row.finalReceivedQty),
+//     clean(row.amount16),
+//     clean(row.netAmount),
+//   ]);
+
+//   const totalNet = selectedRows.reduce((sum, r) => {
+//     const n = parseFloat((r.netAmount || '').toString().replace(/,/g, ''));
+//     return sum + (isNaN(n) ? 0 : n);
+//   }, 0);
+
+//   const totalBillAmt = selectedRows.reduce((sum, r) => {
+//     const n = parseFloat((r.amount16 || '').toString().replace(/,/g, ''));
+//     return sum + (isNaN(n) ? 0 : n);
+//   }, 0);
+
+//   tableBody.push([
+//     '', 
+//     '', 
+//     '',
+//     'TOTAL', 
+//     '', 
+//     '', 
+//     totalBillAmt > 0 ? totalBillAmt.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '',
+//     totalNet > 0 ? totalNet.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : ''
+//   ]);
+
+//   autoTable(doc, {
+//     head: [['Sr.', 'PO No', 'PO Date', 'Material Name', 'Req Qty', 'Rcvd Qty', 'Bill Amt', 'Net Amt']],
+//     body: tableBody,
+//     startY: infoY + 12,
+//     theme: 'grid',
+//     styles: { fontSize: 8, cellPadding: 3 },
+//     headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255], fontStyle: 'bold' },
+//     columnStyles: {
+//       0: { halign: 'center', cellWidth: 10 },
+//       1: { halign: 'center', cellWidth: 22 },
+//       2: { halign: 'center', cellWidth: 22 },
+//       3: { cellWidth: 45 },
+//       4: { halign: 'center', cellWidth: 18 },
+//       5: { halign: 'center', cellWidth: 18 },
+//       6: { halign: 'right', cellWidth: 22 },
+//       7: { halign: 'right', cellWidth: 22 },
+//     },
+//     didParseCell: function(data) {
+//       if (data.row.index === tableBody.length - 1) {
+//         data.cell.styles.fontStyle = 'bold';
+//         data.cell.styles.fillColor = [240, 240, 240];
+//       }
+//     },
+//   });
+
+//   const footerY = doc.internal.pageSize.getHeight() - 15;
+//   doc.setFontSize(8);
+//   doc.setFont('helvetica', 'italic');
+//   doc.setTextColor(128, 128, 128);
+//   doc.text(`Generated on: ${new Date().toLocaleString('en-IN')} | ${debitUID}`, pageWidth / 2, footerY, { align: 'center' });
+
+//   return doc.output('arraybuffer');
+// }
+
+// // ─── Helper: Generate Next Available UID ──────────────────────────────────────
+// function getNextAvailableUID(existingUIDs) {
+//   const existingNums = existingUIDs
+//     .filter(v => v && v.toString().trim().startsWith('DBT'))
+//     .map(v => parseInt(v.toString().replace('DBT', ''), 10))
+//     .filter(n => !isNaN(n));
+
+//   console.log(`[UID] Existing UIDs: ${existingNums.length > 0 ? [...new Set(existingNums)].sort((a, b) => a - b).join(', ') : 'None'}`);
+
+//   let newDebitNum;
+
+//   if (existingNums.length === 0) {
+//     newDebitNum = 1;
+//   } else {
+//     const sortedNums = [...new Set(existingNums)].sort((a, b) => a - b);
+//     const maxNum = sortedNums[sortedNums.length - 1];
+
+//     newDebitNum = null;
+//     for (let i = 1; i <= maxNum; i++) {
+//       if (!sortedNums.includes(i)) {
+//         newDebitNum = i;
+//         console.log(`[UID] Found missing slot: ${i}`);
+//         break;
+//       }
+//     }
+
+//     if (newDebitNum === null) {
+//       newDebitNum = maxNum + 1;
+//     }
+//   }
+
+//   const newDebitUID = `DBT${String(newDebitNum).padStart(3, '0')}`;
+//   console.log(`[UID] Generated: ${newDebitUID}`);
+
+//   return newDebitUID;
+// }
+
+// // ════════════════════════════════════════════════════════════════════════════
+// // GET - Fetch Data
+// // ════════════════════════════════════════════════════════════════════════════
+
+// router.get('/Contractor_Material_Debit', async (req, res) => {
+//   try {
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Contractor_Material_Debit!A3:AF',
+//     });
+
+//     const dataRows = response.data.values || [];
+
+//     const mappedData = dataRows.map((row, index) => ({
+//       rowIndex: index + 3, // because A3 se start
+//       requirementDate: row[0] || '',
+//       UID: row[1] || '',
+//       projectName: row[2] || '',
+//       contractorName: row[3] || '',
+//       vendorFirmName: row[4] || '',
+//       materialType: row[5] || '',
+//       materialName: row[6] || '',
+//       use: row[7] || '',
+//       poNo: row[8] || '',
+//       poUrl: row[9] || '',
+//       poDate: row[10] || '',
+//       mrnNo: row[11] || '',
+//       mrnUrl: row[12] || '',
+//       requiredQty: row[13] || '',
+//       finalReceivedQty: row[14] || '',
+//       billNo16: row[15] || '',
+//       billUrl16: row[16] || '',
+//       billDate16: row[17] || '',
+//       amount16: row[18] || '',
+//       transportCharges16: row[19] || '',
+//       netAmount: row[20] || '',
+//       status: row[29] || '',
+//     }));
+
+//     console.log('Mapped first 20 rows:', mappedData.slice(0, 20));
+
+//     const filteredData = mappedData.filter(row => {
+//       const poNo = String(row.poNo || '').trim();
+//       const status = String(row.status || '').trim().toLowerCase();
+
+//       return poNo !== '' && status !== 'done' && status !== 'debit done';
+//     });
+
+//     console.log(`Filtered data count: ${filteredData.length}`);
+
+//     res.json({ success: true, data: filteredData });
+//   } catch (error) {
+//     console.error('GET Error:', error);
+//     res.status(500).json({ success: false, error: 'Failed to fetch data' });
+//   }
+// });
+// // ════════════════════════════════════════════════════════════════════════════
+// // POST - Submit Debit (ONLY SELECTED ROWS - NOT ALL PO ITEMS)
+// // ════════════════════════════════════════════════════════════════════════════
+// router.post('/Contractor_Material_Debit', async (req, res) => {
+//   try {
+//     const { selectedRows, status, totalAmount } = req.body;
+
+//     if (!Array.isArray(selectedRows) || selectedRows.length === 0) {
+//       return res.status(400).json({ success: false, error: 'selectedRows required' });
+//     }
+//     if (!status) {
+//       return res.status(400).json({ success: false, error: 'status required' });
+//     }
+
+//     const now = new Date();
+//     const currentDateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    
+//     const frontendTotalAmount = totalAmount || 0;
+
+//     console.log(`\n[DEBIT] ═══════════════════════════════════════════════════`);
+//     console.log(`[DEBIT] Current DateTime: ${currentDateTime}`);
+//     console.log(`[DEBIT] Total Amount: ₹${frontendTotalAmount}`);
+//     console.log(`[DEBIT] Selected Rows Count: ${selectedRows.length}`);
+
+//     // ✅ GET ROW INDICES FROM FRONTEND (Only selected items)
+//     const selectedRowIndices = selectedRows.map(r => r.rowIndex);
+//     console.log(`[DEBIT] Selected Row Indices: ${selectedRowIndices.join(', ')}`);
+
+//     // ── Fetch Sheet Data ──────────────────────────────────────────────────
+//     const sheetResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Contractor_Material_Debit!A:AG',
+//     });
+
+//     const allRows = sheetResponse.data.values || [];
+//     console.log(`[DEBIT] Sheet has ${allRows.length} total rows`);
+
+//     // ✅ MATCH ONLY SELECTED ROW INDICES (Not all PO items)
+//     const matchedRows = [];
+
+//     for (const rowIndex of selectedRowIndices) {
+//       const sheetRowIndex = rowIndex - 1; // Convert to 0-based index
+      
+//       if (sheetRowIndex >= 0 && sheetRowIndex < allRows.length) {
+//         const row = allRows[sheetRowIndex];
+//         const sheetStatus = (row[29] || '').toString().trim();
+
+//         // Skip if already done
+//         if (sheetStatus === 'Done' || sheetStatus === 'Debit Done') {
+//           console.log(`[SKIP] Row ${rowIndex}: Already processed (Status: ${sheetStatus})`);
+//           continue;
+//         }
+
+//         console.log(`[MATCH] ✓ Row ${rowIndex}: PO="${row[8]}" | Material="${row[6]}" | MaterialType="${row[5]}"`);
+
+//         matchedRows.push({
+//           actualRowIndex: rowIndex,
+//           poNo: row[8] || '',
+//           poDate: row[10] || '',
+//           projectName: row[2] || '',
+//           contractorName: row[3] || '',
+//           vendorFirmName: row[4] || '',
+//           materialType: row[5] || '',
+//           materialName: row[6] || '',
+//           requiredQty: row[13] || '',
+//           finalReceivedQty: row[14] || '',
+//           amount16: row[18] || '',
+//           netAmount: row[20] || '',
+//         });
+//       } else {
+//         console.log(`[ERROR] Row ${rowIndex}: Invalid index`);
+//       }
+//     }
+
+//     console.log(`[DEBIT] ───────────────────────────────────────────────────`);
+//     console.log(`[DEBIT] Matched ${matchedRows.length} out of ${selectedRows.length} selected rows`);
+
+//     if (matchedRows.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'No valid rows found to process',
+//         hint: 'Selected rows may already be processed'
+//       });
+//     }
+
+//     // ── Get Existing UIDs ─────────────────────────────────────────────────
+//     const uidResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Contractor_Material_Debit!AE:AE',
+//     });
+
+//     const allUIDs = (uidResponse.data.values || []).flat();
+//     const newDebitUID = getNextAvailableUID(allUIDs);
+
+//     // ── Generate PDF (Only with selected/matched rows) ───────────────────
+//     console.log(`[DEBIT] Generating PDF for ${matchedRows.length} materials...`);
+//     const pdfBuffer = Buffer.from(generateDebitPDF(matchedRows, newDebitUID, currentDateTime, status));
+
+//     // ── Upload PDF ────────────────────────────────────────────────────────
+//     const pdfUrl = await uploadPDFToGoogleDrive(pdfBuffer, `${newDebitUID}_Debit.pdf`);
+//     console.log(`[DEBIT] PDF uploaded: ${pdfUrl}`);
+
+//     // ── Update ONLY Selected/Matched Rows ─────────────────────────────────
+//     const batchData = [];
+
+//     for (const row of matchedRows) {
+//       const r = row.actualRowIndex;
+      
+//       batchData.push(
+//         { range: `Contractor_Material_Debit!AC${r}`, values: [[currentDateTime]] },
+//         { range: `Contractor_Material_Debit!AD${r}`, values: [[status]] },
+//         { range: `Contractor_Material_Debit!AE${r}`, values: [[newDebitUID]] },
+//         { range: `Contractor_Material_Debit!AF${r}`, values: [[pdfUrl]] },
+//         { range: `Contractor_Material_Debit!AG${r}`, values: [[frontendTotalAmount]] },
+//       );
+//     }
+
+//     await sheets.spreadsheets.values.batchUpdate({
+//       spreadsheetId: DebitID,
+//       resource: { valueInputOption: 'USER_ENTERED', data: batchData },
+//     });
+
+//     // ── Get unique POs for summary ────────────────────────────────────────
+//     const uniquePOs = [...new Set(matchedRows.map(r => r.poNo))];
+
+//     console.log(`[DEBIT] ✓ Updated ${matchedRows.length} rows with UID: ${newDebitUID}`);
+//     console.log(`[DEBIT] ✓ Unique POs: ${uniquePOs.join(', ')}`);
+//     console.log(`[DEBIT] ═══════════════════════════════════════════════════\n`);
+
+//     res.json({
+//       success: true,
+//       message: `${matchedRows.length} materials updated successfully`,
+//       data: {
+//         debitUID: newDebitUID,
+//         pdfUrl,
+//         dateTime: currentDateTime,
+//         totalMaterials: matchedRows.length,
+//         totalPOs: uniquePOs.length,
+//         totalAmount: frontendTotalAmount,
+//         totalAmountFormatted: `₹${frontendTotalAmount.toLocaleString('en-IN')}`,
+//         updatedRows: matchedRows.map(r => ({
+//           row: r.actualRowIndex,
+//           poNo: r.poNo,
+//           material: r.materialName
+//         }))
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('[DEBIT] Error:', error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
+
+// module.exports = router;
+
+
+
+
+
+///////////////////////////////////////////////////
+
+
+
+
+
+
+// const express = require('express');
+// const { sheets, drive, DebitID } = require('../../config/googleSheet');
+// const { Readable } = require('stream');
+// const router = express.Router();
+
+// const { jsPDF } = require('jspdf');
+// const autoTable = require('jspdf-autotable').default || require('jspdf-autotable');
+// console.log('jsPDF and jspdf-autotable loaded successfully');
+
+// router.use((req, res, next) => {
+//   if (req.method === 'OPTIONS') return res.status(200).end();
+//   next();
+// });
+
+// // ─── Helper: Upload PDF ───────────────────────────────────────────────────────
+// async function uploadPDFToGoogleDrive(pdfBuffer, fileName) {
+//   const fileStream = new Readable();
+//   fileStream.push(pdfBuffer);
+//   fileStream.push(null);
+
+//   const response = await drive.files.create({
+//     resource: {
+//       name: fileName,
+//       parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
+//     },
+//     media: { mimeType: 'application/pdf', body: fileStream },
+//     fields: 'id, webViewLink',
+//     supportsAllDrives: true,
+//   });
+
+//   await drive.permissions.create({
+//     fileId: response.data.id,
+//     requestBody: { role: 'reader', type: 'anyone' },
+//     supportsAllDrives: true,
+//   });
+
+//   return `https://drive.google.com/file/d/${response.data.id}/view?usp=sharing`;
+// }
+
+// // ─── Helper: Generate PDF ─────────────────────────────────────────────────────
+// function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
+//   const doc = new jsPDF();
+//   const pageWidth = doc.internal.pageSize.getWidth();
+//   const pageHeight = doc.internal.pageSize.getHeight();
+
+//   const clean = (val) => (val || 'N/A').toString().trim().replace(/[^\x20-\x7E]/g, '');
+
+//   doc.setDrawColor(41, 128, 185);
+//   doc.setLineWidth(2);
+//   doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+
+//   doc.setTextColor(0, 0, 0);
+//   doc.setFontSize(18);
+//   doc.setFont('helvetica', 'bold');
+//   doc.text('R.C.C Infrastructures', pageWidth / 2, 15, { align: 'center' });
+
+//   doc.setFontSize(9);
+//   doc.setFont('helvetica', 'normal');
+//   doc.text('310 Saket Nagar, 9B Near Sagar Public School, Bhopal, 462026', pageWidth / 2, 22, { align: 'center' });
+//   doc.text('Contact: 7869962504 | Email: mayank@rcinfrastructure.com', pageWidth / 2, 28, { align: 'center' });
+//   doc.text('GST: 23ABHFR3130L1ZA', pageWidth / 2, 34, { align: 'center' });
+
+//   doc.setDrawColor(200, 200, 200);
+//   doc.setLineWidth(0.5);
+//   doc.line(15, 38, pageWidth - 15, 38);
+
+//   doc.setFontSize(15);
+//   doc.setFont('helvetica', 'bold');
+//   doc.setTextColor(220, 53, 69);
+//   doc.text('CONTRACTOR MATERIAL DEBIT REPORT', pageWidth / 2, 50, { align: 'center' });
+
+//   doc.setDrawColor(220, 53, 69);
+//   doc.setLineWidth(1);
+//   doc.line(30, 53, pageWidth - 30, 53);
+
+//   doc.setTextColor(0, 0, 0);
+//   doc.setFontSize(10);
+
+//   const uniquePOs = [...new Set(selectedRows.map(r => clean(r.poNo)))];
+//   const uniqueProjects = [...new Set(selectedRows.map(r => clean(r.projectName)))];
+//   const uniqueContractors = [...new Set(selectedRows.map(r => clean(r.contractorName)))];
+//   const uniqueMaterialTypes = [...new Set(selectedRows.map(r => clean(r.materialType)))].filter(t => t && t !== 'N/A');
+
+//   console.log(`[PDF] Unique Material Types found:`, uniqueMaterialTypes);
+
+//   const genDate = new Date().toLocaleDateString('en-GB', {
+//     day: '2-digit', month: 'short', year: 'numeric'
+//   }).replace(/ /g, '-');
+
+//   let infoY = 65;
+
+//   let materialTypeDisplay = 'N/A';
+//   if (uniqueMaterialTypes.length === 1) {
+//     materialTypeDisplay = uniqueMaterialTypes[0];
+//   } else if (uniqueMaterialTypes.length > 1) {
+//     materialTypeDisplay = `${uniqueMaterialTypes[0]} (+${uniqueMaterialTypes.length - 1} more)`;
+//   }
+
+//   const infoLines = [
+//     {
+//       l: 'Project Name:',
+//       v: uniqueProjects.length > 1 ? `${uniqueProjects[0]} (+${uniqueProjects.length - 1} more)` : uniqueProjects[0] || 'N/A',
+//       l2: 'Total POs:',
+//       v2: `${uniquePOs.length} PO(s)`
+//     },
+//     {
+//       l: 'Contractor:',
+//       v: uniqueContractors.length > 1 ? `${uniqueContractors[0]} (+${uniqueContractors.length - 1} more)` : uniqueContractors[0] || 'N/A',
+//       l2: 'Actual Date:',
+//       v2: clean(actualDate)
+//     },
+//     {
+//       l: 'Material Type:',
+//       v: materialTypeDisplay,
+//       l2: 'Debit UID:',
+//       v2: debitUID
+//     },
+//     {
+//       l: 'Report Date:',
+//       v: genDate,
+//       l2: 'Total Materials:',
+//       v2: `${selectedRows.length} Item(s)`
+//     },
+//   ];
+
+//   infoLines.forEach(({ l, v, l2, v2 }) => {
+//     doc.setFont('helvetica', 'bold');
+//     doc.text(l, 15, infoY);
+//     doc.setFont('helvetica', 'normal');
+//     doc.text(v.substring(0, 40), 55, infoY);
+//     doc.setFont('helvetica', 'bold');
+//     doc.text(l2, 115, infoY);
+//     doc.setFont('helvetica', 'normal');
+//     doc.text(v2.substring(0, 30), 152, infoY);
+//     infoY += 7;
+//   });
+
+//   doc.setFontSize(12);
+//   doc.setFont('helvetica', 'bold');
+//   doc.setTextColor(220, 53, 69);
+//   doc.text('Material Details', 15, infoY + 5);
+//   doc.setTextColor(0, 0, 0);
+
+//   const sortedRows = [...selectedRows].sort((a, b) => {
+//     return clean(a.poNo).localeCompare(clean(b.poNo));
+//   });
+
+//   const tableBody = sortedRows.map((row, i) => [
+//     i + 1,
+//     clean(row.poNo),
+//     clean(row.poDate),
+//     clean(row.materialName).substring(0, 22),
+//     clean(row.requiredQty),
+//     clean(row.finalReceivedQty),
+//     clean(row.amount16),
+//     clean(row.netAmount),
+//   ]);
+
+//   const totalNet = selectedRows.reduce((sum, r) => {
+//     const n = parseFloat((r.netAmount || '').toString().replace(/,/g, ''));
+//     return sum + (isNaN(n) ? 0 : n);
+//   }, 0);
+
+//   const totalBillAmt = selectedRows.reduce((sum, r) => {
+//     const n = parseFloat((r.amount16 || '').toString().replace(/,/g, ''));
+//     return sum + (isNaN(n) ? 0 : n);
+//   }, 0);
+
+//   tableBody.push([
+//     '', '', '',
+//     'TOTAL', '', '',
+//     totalBillAmt > 0 ? totalBillAmt.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '',
+//     totalNet > 0 ? totalNet.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : ''
+//   ]);
+
+//   autoTable(doc, {
+//     head: [['Sr.', 'PO No', 'PO Date', 'Material Name', 'Req Qty', 'Rcvd Qty', 'Bill Amt', 'Net Amt']],
+//     body: tableBody,
+//     startY: infoY + 12,
+//     theme: 'grid',
+//     styles: { fontSize: 8, cellPadding: 3 },
+//     headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255], fontStyle: 'bold' },
+//     columnStyles: {
+//       0: { halign: 'center', cellWidth: 10 },
+//       1: { halign: 'center', cellWidth: 22 },
+//       2: { halign: 'center', cellWidth: 22 },
+//       3: { cellWidth: 45 },
+//       4: { halign: 'center', cellWidth: 18 },
+//       5: { halign: 'center', cellWidth: 18 },
+//       6: { halign: 'right', cellWidth: 22 },
+//       7: { halign: 'right', cellWidth: 22 },
+//     },
+//     didParseCell: function (data) {
+//       if (data.row.index === tableBody.length - 1) {
+//         data.cell.styles.fontStyle = 'bold';
+//         data.cell.styles.fillColor = [240, 240, 240];
+//       }
+//     },
+//   });
+
+//   const footerY = doc.internal.pageSize.getHeight() - 15;
+//   doc.setFontSize(8);
+//   doc.setFont('helvetica', 'italic');
+//   doc.setTextColor(128, 128, 128);
+//   doc.text(`Generated on: ${new Date().toLocaleString('en-IN')} | ${debitUID}`, pageWidth / 2, footerY, { align: 'center' });
+
+//   return doc.output('arraybuffer');
+// }
+
+// // ─── Helper: Generate Next Available UID ──────────────────────────────────────
+// function getNextAvailableUID(existingUIDs) {
+//   const existingNums = existingUIDs
+//     .filter(v => v && v.toString().trim().startsWith('DBT'))
+//     .map(v => parseInt(v.toString().replace('DBT', ''), 10))
+//     .filter(n => !isNaN(n));
+
+//   console.log(`[UID] Existing UIDs: ${existingNums.length > 0 ? [...new Set(existingNums)].sort((a, b) => a - b).join(', ') : 'None'}`);
+
+//   let newDebitNum;
+
+//   if (existingNums.length === 0) {
+//     newDebitNum = 1;
+//   } else {
+//     const sortedNums = [...new Set(existingNums)].sort((a, b) => a - b);
+//     const maxNum = sortedNums[sortedNums.length - 1];
+
+//     newDebitNum = null;
+//     for (let i = 1; i <= maxNum; i++) {
+//       if (!sortedNums.includes(i)) {
+//         newDebitNum = i;
+//         console.log(`[UID] Found missing slot: ${i}`);
+//         break;
+//       }
+//     }
+
+//     if (newDebitNum === null) {
+//       newDebitNum = maxNum + 1;
+//     }
+//   }
+
+//   const newDebitUID = `DBT${String(newDebitNum).padStart(3, '0')}`;
+//   console.log(`[UID] Generated: ${newDebitUID}`);
+
+//   return newDebitUID;
+// }
+
+// // ════════════════════════════════════════════════════════════════════════════
+// // GET - Fetch Data
+// // ════════════════════════════════════════════════════════════════════════════
+
+// router.get('/Contractor_Material_Debit', async (req, res) => {
+//   try {
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Contractor_Material_Debit!A3:AF',
+//     });
+
+//     const dataRows = response.data.values || [];
+
+//     const mappedData = dataRows.map((row, index) => ({
+//       rowIndex: index + 3,
+//       requirementDate: row[0] || '',
+//       UID: row[1] || '',
+//       projectName: row[2] || '',
+//       contractorName: row[3] || '',
+//       vendorFirmName: row[4] || '',
+//       materialType: row[5] || '',
+//       materialName: row[6] || '',
+//       use: row[7] || '',
+//       poNo: row[8] || '',
+//       poUrl: row[9] || '',
+//       poDate: row[10] || '',
+//       mrnNo: row[11] || '',
+//       mrnUrl: row[12] || '',
+//       requiredQty: row[13] || '',
+//       finalReceivedQty: row[14] || '',
+//       billNo16: row[15] || '',
+//       billUrl16: row[16] || '',
+//       billDate16: row[17] || '',
+//       amount16: row[18] || '',
+//       transportCharges16: row[19] || '',
+//       netAmount: row[20] || '',
+//       status: row[29] || '',
+//     }));
+
+//     console.log('Mapped first 20 rows:', mappedData.slice(0, 20));
+
+//     const filteredData = mappedData.filter(row => {
+//       const poNo = String(row.poNo || '').trim();
+//       const status = String(row.status || '').trim().toLowerCase();
+//       return poNo !== '' && status !== 'done' && status !== 'debit done';
+//     });
+
+//     console.log(`Filtered data count: ${filteredData.length}`);
+
+//     res.json({ success: true, data: filteredData });
+//   } catch (error) {
+//     console.error('GET Error:', error);
+//     res.status(500).json({ success: false, error: 'Failed to fetch data' });
+//   }
+// });
+
+// // ════════════════════════════════════════════════════════════════════════════
+// // POST - Submit Debit → Data Material_Debit_Done sheet mein jayega
+// // Columns: A=UID, B=Debit_Date, C=Status, D=Debit_Number, E=Debit_Url, F=Debit_Pdf_Total_Amount
+// // ════════════════════════════════════════════════════════════════════════════
+
+// router.post('/Contractor_Material_Debit', async (req, res) => {
+//   try {
+//     const { selectedRows, status, totalAmount } = req.body;
+
+//     if (!Array.isArray(selectedRows) || selectedRows.length === 0) {
+//       return res.status(400).json({ success: false, error: 'selectedRows required' });
+//     }
+//     if (!status) {
+//       return res.status(400).json({ success: false, error: 'status required' });
+//     }
+
+//     const now = new Date();
+//     const currentDateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+//     const frontendTotalAmount = totalAmount || 0;
+
+//     console.log(`\n[DEBIT] ═══════════════════════════════════════════════════`);
+//     console.log(`[DEBIT] Current DateTime: ${currentDateTime}`);
+//     console.log(`[DEBIT] Total Amount: ₹${frontendTotalAmount}`);
+//     console.log(`[DEBIT] Selected Rows Count: ${selectedRows.length}`);
+
+//     const selectedRowIndices = selectedRows.map(r => r.rowIndex);
+//     console.log(`[DEBIT] Selected Row Indices: ${selectedRowIndices.join(', ')}`);
+
+//     // ── Fetch Sheet Data ──────────────────────────────────────────────────
+//     const sheetResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Contractor_Material_Debit!A:AG',
+//     });
+
+//     const allRows = sheetResponse.data.values || [];
+//     console.log(`[DEBIT] Sheet has ${allRows.length} total rows`);
+
+//     // ── Match Only Selected Row Indices ───────────────────────────────────
+//     const matchedRows = [];
+
+//     for (const rowIndex of selectedRowIndices) {
+//       const sheetRowIndex = rowIndex - 1; // 0-based
+
+//       if (sheetRowIndex >= 0 && sheetRowIndex < allRows.length) {
+//         const row = allRows[sheetRowIndex];
+//         const sheetStatus = (row[29] || '').toString().trim();
+
+//         if (sheetStatus === 'Done' || sheetStatus === 'Debit Done') {
+//           console.log(`[SKIP] Row ${rowIndex}: Already processed (Status: ${sheetStatus})`);
+//           continue;
+//         }
+
+//         console.log(`[MATCH] ✓ Row ${rowIndex}: PO="${row[8]}" | Material="${row[6]}" | MaterialType="${row[5]}"`);
+
+//         matchedRows.push({
+//           actualRowIndex: rowIndex,
+//           uid: row[1] || '',          // Column B = UID (original sheet ka UID)
+//           poNo: row[8] || '',
+//           poDate: row[10] || '',
+//           projectName: row[2] || '',
+//           contractorName: row[3] || '',
+//           vendorFirmName: row[4] || '',
+//           materialType: row[5] || '',
+//           materialName: row[6] || '',
+//           requiredQty: row[13] || '',
+//           finalReceivedQty: row[14] || '',
+//           amount16: row[18] || '',
+//           netAmount: row[20] || '',
+//         });
+//       } else {
+//         console.log(`[ERROR] Row ${rowIndex}: Invalid index`);
+//       }
+//     }
+
+//     console.log(`[DEBIT] ───────────────────────────────────────────────────`);
+//     console.log(`[DEBIT] Matched ${matchedRows.length} out of ${selectedRows.length} selected rows`);
+
+//     if (matchedRows.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'No valid rows found to process',
+//         hint: 'Selected rows may already be processed'
+//       });
+//     }
+
+//     // ── Get Existing UIDs from Material_Debit_Done sheet (Column D) ───────
+//     // Column D = Debit_Number
+//     const uidResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Material_Debit_Done!D:D',
+//     });
+
+//     const allUIDs = (uidResponse.data.values || []).flat();
+//     const newDebitUID = getNextAvailableUID(allUIDs);
+
+//     // ── Generate PDF ──────────────────────────────────────────────────────
+//     console.log(`[DEBIT] Generating PDF for ${matchedRows.length} materials...`);
+//     const pdfBuffer = Buffer.from(generateDebitPDF(matchedRows, newDebitUID, currentDateTime, status));
+
+//     // ── Upload PDF ────────────────────────────────────────────────────────
+//     const pdfUrl = await uploadPDFToGoogleDrive(pdfBuffer, `${newDebitUID}_Debit.pdf`);
+//     console.log(`[DEBIT] PDF uploaded: ${pdfUrl}`);
+
+//     // ── Find Next Empty Row in Material_Debit_Done Sheet ─────────────────
+//     const doneSheetResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId: DebitID,
+//       range: 'Material_Debit_Done!A:A',
+//     });
+
+//     const doneSheetRows = doneSheetResponse.data.values || [];
+//     // Pehli empty row dhundho (1-based row number)
+//     let nextEmptyRow = doneSheetRows.length + 1;
+
+//     console.log(`[DEBIT] Material_Debit_Done next empty row: ${nextEmptyRow}`);
+
+//     // ── Insert Rows in Material_Debit_Done Sheet ──────────────────────────
+//     // Columns: A=UID, B=Debit_Date, C=Status, D=Debit_Number, E=Debit_Url, F=Debit_Pdf_Total_Amount
+//     // Har matched row ke liye ek row insert karenge
+//     const batchData = [];
+
+//     for (const row of matchedRows) {
+//       batchData.push({
+//         range: `Material_Debit_Done!A${nextEmptyRow}:F${nextEmptyRow}`,
+//         values: [[
+//           row.uid,                  // A = UID (original row ka UID)
+//           currentDateTime,          // B = Debit_Date
+//           status,                   // C = Status
+//           newDebitUID,              // D = Debit_Number
+//           pdfUrl,                   // E = Debit_Url
+//           frontendTotalAmount,      // F = Debit_Pdf_Total_Amount
+//         ]],
+//       });
+
+//       console.log(`[DEBIT] Queued row ${nextEmptyRow} for UID="${row.uid}" | PO="${row.poNo}"`);
+//       nextEmptyRow++;
+//     }
+
+//     await sheets.spreadsheets.values.batchUpdate({
+//       spreadsheetId: DebitID,
+//       resource: {
+//         valueInputOption: 'USER_ENTERED',
+//         data: batchData,
+//       },
+//     });
+
+//     console.log(`[DEBIT] ✓ Inserted ${matchedRows.length} rows into Material_Debit_Done sheet`);
+
+//     // ── Get unique POs for summary ────────────────────────────────────────
+//     const uniquePOs = [...new Set(matchedRows.map(r => r.poNo))];
+
+//     console.log(`[DEBIT] ✓ Debit UID: ${newDebitUID}`);
+//     console.log(`[DEBIT] ✓ Unique POs: ${uniquePOs.join(', ')}`);
+//     console.log(`[DEBIT] ═══════════════════════════════════════════════════\n`);
+
+//     res.json({
+//       success: true,
+//       message: `${matchedRows.length} materials inserted into Material_Debit_Done successfully`,
+//       data: {
+//         debitUID: newDebitUID,
+//         pdfUrl,
+//         dateTime: currentDateTime,
+//         totalMaterials: matchedRows.length,
+//         totalPOs: uniquePOs.length,
+//         totalAmount: frontendTotalAmount,
+//         totalAmountFormatted: `₹${Number(frontendTotalAmount).toLocaleString('en-IN')}`,
+//         insertedRows: matchedRows.map((r, i) => ({
+//           sheetRow: doneSheetRows.length + 1 + i,
+//           uid: r.uid,
+//           poNo: r.poNo,
+//           material: r.materialName,
+//         })),
+//       },
+//     });
+
+//   } catch (error) {
+//     console.error('[DEBIT] Error:', error);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
+
+// module.exports = router;
+
+
+
+
+
 const express = require('express');
 const { sheets, drive, DebitID } = require('../../config/googleSheet');
 const { Readable } = require('stream');
@@ -39,7 +1005,7 @@ async function uploadPDFToGoogleDrive(pdfBuffer, fileName) {
   return `https://drive.google.com/file/d/${response.data.id}/view?usp=sharing`;
 }
 
-// ─── Helper: Generate PDF ─────────────────────────────────────────────────────
+// ─── Helper: Generate PDF (SAME LAYOUT + UID Column Added) ───────────────────
 function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -87,55 +1053,55 @@ function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
 
   console.log(`[PDF] Unique Material Types found:`, uniqueMaterialTypes);
 
-  const genDate = new Date().toLocaleDateString('en-GB', { 
-    day: '2-digit', month: 'short', year: 'numeric' 
+  const genDate = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric'
   }).replace(/ /g, '-');
 
   // ── Info Section ────────────────────────────────────────────────────────
   let infoY = 65;
-  
+
   let materialTypeDisplay = 'N/A';
   if (uniqueMaterialTypes.length === 1) {
     materialTypeDisplay = uniqueMaterialTypes[0];
   } else if (uniqueMaterialTypes.length > 1) {
     materialTypeDisplay = `${uniqueMaterialTypes[0]} (+${uniqueMaterialTypes.length - 1} more)`;
   }
-  
+
   const infoLines = [
-    { 
-      l: 'Project Name:', 
-      v: uniqueProjects.length > 1 ? `${uniqueProjects[0]} (+${uniqueProjects.length - 1} more)` : uniqueProjects[0] || 'N/A', 
-      l2: 'Total POs:', 
-      v2: `${uniquePOs.length} PO(s)` 
+    {
+      l: 'Project Name:',
+      v: uniqueProjects.length > 1 ? `${uniqueProjects[0]} (+${uniqueProjects.length - 1} more)` : uniqueProjects[0] || 'N/A',
+      l2: 'Total POs:',
+      v2: `${uniquePOs.length} PO(s)`
     },
-    { 
-      l: 'Contractor:', 
-      v: uniqueContractors.length > 1 ? `${uniqueContractors[0]} (+${uniqueContractors.length - 1} more)` : uniqueContractors[0] || 'N/A', 
-      l2: 'Actual Date:', 
-      v2: clean(actualDate) 
+    {
+      l: 'Contractor:',
+      v: uniqueContractors.length > 1 ? `${uniqueContractors[0]} (+${uniqueContractors.length - 1} more)` : uniqueContractors[0] || 'N/A',
+      l2: 'Actual Date:',
+      v2: clean(actualDate)
     },
-    { 
-      l: 'Material Type:', 
-      v: materialTypeDisplay, 
-      l2: 'Debit UID:', 
-      v2: debitUID 
+    {
+      l: 'Material Type:',
+      v: materialTypeDisplay,
+      l2: 'Debit UID:',
+      v2: debitUID
     },
-    { 
-      l: 'Report Date:', 
-      v: genDate, 
-      l2: 'Total Materials:', 
-      v2: `${selectedRows.length} Item(s)` 
+    {
+      l: 'Report Date:',
+      v: genDate,
+      l2: 'Total Materials:',
+      v2: `${selectedRows.length} Item(s)`
     },
   ];
 
   infoLines.forEach(({ l, v, l2, v2 }) => {
-    doc.setFont('helvetica', 'bold'); 
+    doc.setFont('helvetica', 'bold');
     doc.text(l, 15, infoY);
-    doc.setFont('helvetica', 'normal'); 
+    doc.setFont('helvetica', 'normal');
     doc.text(v.substring(0, 40), 55, infoY);
-    doc.setFont('helvetica', 'bold'); 
+    doc.setFont('helvetica', 'bold');
     doc.text(l2, 115, infoY);
-    doc.setFont('helvetica', 'normal'); 
+    doc.setFont('helvetica', 'normal');
     doc.text(v2.substring(0, 30), 152, infoY);
     infoY += 7;
   });
@@ -151,11 +1117,13 @@ function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
     return clean(a.poNo).localeCompare(clean(b.poNo));
   });
 
+  // ── Table Body: Sr | UID | PO No | PO Date | Material Name | Req Qty | Rcvd Qty | Bill Amt | Net Amt
   const tableBody = sortedRows.map((row, i) => [
     i + 1,
+    clean(row.uid),
     clean(row.poNo),
     clean(row.poDate),
-    clean(row.materialName).substring(0, 22),
+    clean(row.materialName).substring(0, 20),
     clean(row.requiredQty),
     clean(row.finalReceivedQty),
     clean(row.amount16),
@@ -173,34 +1141,37 @@ function generateDebitPDF(selectedRows, debitUID, actualDate, status) {
   }, 0);
 
   tableBody.push([
-    '', 
-    '', 
     '',
-    'TOTAL', 
-    '', 
-    '', 
+    '',
+    '',
+    '',
+    'TOTAL',
+    '',
+    '',
     totalBillAmt > 0 ? totalBillAmt.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '',
     totalNet > 0 ? totalNet.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : ''
   ]);
 
   autoTable(doc, {
-    head: [['Sr.', 'PO No', 'PO Date', 'Material Name', 'Req Qty', 'Rcvd Qty', 'Bill Amt', 'Net Amt']],
+    head: [['Sr.', 'UID', 'PO No', 'PO Date', 'Material Name', 'Req Qty', 'Rcvd Qty', 'Bill Amt', 'Net Amt']],
     body: tableBody,
     startY: infoY + 12,
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255], fontStyle: 'bold' },
+    styles: { fontSize: 7, cellPadding: 2.5 },
+    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { halign: 'center', cellWidth: 22 },
-      2: { halign: 'center', cellWidth: 22 },
-      3: { cellWidth: 45 },
-      4: { halign: 'center', cellWidth: 18 },
-      5: { halign: 'center', cellWidth: 18 },
-      6: { halign: 'right', cellWidth: 22 },
-      7: { halign: 'right', cellWidth: 22 },
+      0: { halign: 'center', cellWidth: 8 },    // Sr.
+      1: { halign: 'center', cellWidth: 20 },   // UID
+      2: { halign: 'center', cellWidth: 20 },   // PO No
+      3: { halign: 'center', cellWidth: 20 },   // PO Date
+      4: { cellWidth: 38 },                      // Material Name
+      5: { halign: 'center', cellWidth: 16 },   // Req Qty
+      6: { halign: 'center', cellWidth: 16 },   // Rcvd Qty
+      7: { halign: 'right', cellWidth: 21 },    // Bill Amt
+      8: { halign: 'right', cellWidth: 21 },    // Net Amt
     },
-    didParseCell: function(data) {
+    margin: { left: 10, right: 10 },
+    didParseCell: function (data) {
       if (data.row.index === tableBody.length - 1) {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [240, 240, 240];
@@ -268,7 +1239,7 @@ router.get('/Contractor_Material_Debit', async (req, res) => {
     const dataRows = response.data.values || [];
 
     const mappedData = dataRows.map((row, index) => ({
-      rowIndex: index + 3, // because A3 se start
+      rowIndex: index + 3,
       requirementDate: row[0] || '',
       UID: row[1] || '',
       projectName: row[2] || '',
@@ -293,26 +1264,24 @@ router.get('/Contractor_Material_Debit', async (req, res) => {
       status: row[29] || '',
     }));
 
-    console.log('Mapped first 20 rows:', mappedData.slice(0, 20));
-
     const filteredData = mappedData.filter(row => {
       const poNo = String(row.poNo || '').trim();
       const status = String(row.status || '').trim().toLowerCase();
-
       return poNo !== '' && status !== 'done' && status !== 'debit done';
     });
 
     console.log(`Filtered data count: ${filteredData.length}`);
-
     res.json({ success: true, data: filteredData });
   } catch (error) {
     console.error('GET Error:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 });
+
 // ════════════════════════════════════════════════════════════════════════════
-// POST - Submit Debit (ONLY SELECTED ROWS - NOT ALL PO ITEMS)
+// POST - Submit Debit → Material_Debit_Done sheet mein data jayega
 // ════════════════════════════════════════════════════════════════════════════
+
 router.post('/Contractor_Material_Debit', async (req, res) => {
   try {
     const { selectedRows, status, totalAmount } = req.body;
@@ -326,7 +1295,7 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
 
     const now = new Date();
     const currentDateTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-    
+
     const frontendTotalAmount = totalAmount || 0;
 
     console.log(`\n[DEBIT] ═══════════════════════════════════════════════════`);
@@ -334,7 +1303,6 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
     console.log(`[DEBIT] Total Amount: ₹${frontendTotalAmount}`);
     console.log(`[DEBIT] Selected Rows Count: ${selectedRows.length}`);
 
-    // ✅ GET ROW INDICES FROM FRONTEND (Only selected items)
     const selectedRowIndices = selectedRows.map(r => r.rowIndex);
     console.log(`[DEBIT] Selected Row Indices: ${selectedRowIndices.join(', ')}`);
 
@@ -347,26 +1315,26 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
     const allRows = sheetResponse.data.values || [];
     console.log(`[DEBIT] Sheet has ${allRows.length} total rows`);
 
-    // ✅ MATCH ONLY SELECTED ROW INDICES (Not all PO items)
+    // ── Match Only Selected Row Indices ───────────────────────────────────
     const matchedRows = [];
 
     for (const rowIndex of selectedRowIndices) {
-      const sheetRowIndex = rowIndex - 1; // Convert to 0-based index
-      
+      const sheetRowIndex = rowIndex - 1;
+
       if (sheetRowIndex >= 0 && sheetRowIndex < allRows.length) {
         const row = allRows[sheetRowIndex];
         const sheetStatus = (row[29] || '').toString().trim();
 
-        // Skip if already done
         if (sheetStatus === 'Done' || sheetStatus === 'Debit Done') {
           console.log(`[SKIP] Row ${rowIndex}: Already processed (Status: ${sheetStatus})`);
           continue;
         }
 
-        console.log(`[MATCH] ✓ Row ${rowIndex}: PO="${row[8]}" | Material="${row[6]}" | MaterialType="${row[5]}"`);
+        console.log(`[MATCH] ✓ Row ${rowIndex}: UID="${row[1]}" | PO="${row[8]}" | Material="${row[6]}"`);
 
         matchedRows.push({
           actualRowIndex: rowIndex,
+          uid: row[1] || '',
           poNo: row[8] || '',
           poDate: row[10] || '',
           projectName: row[2] || '',
@@ -395,16 +1363,16 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
       });
     }
 
-    // ── Get Existing UIDs ─────────────────────────────────────────────────
+    // ── Get Existing UIDs from Material_Debit_Done (Column D) ─────────────
     const uidResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: DebitID,
-      range: 'Contractor_Material_Debit!AE:AE',
+      range: 'Material_Debit_Done!D:D',
     });
 
     const allUIDs = (uidResponse.data.values || []).flat();
     const newDebitUID = getNextAvailableUID(allUIDs);
 
-    // ── Generate PDF (Only with selected/matched rows) ───────────────────
+    // ── Generate PDF ──────────────────────────────────────────────────────
     console.log(`[DEBIT] Generating PDF for ${matchedRows.length} materials...`);
     const pdfBuffer = Buffer.from(generateDebitPDF(matchedRows, newDebitUID, currentDateTime, status));
 
@@ -412,36 +1380,57 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
     const pdfUrl = await uploadPDFToGoogleDrive(pdfBuffer, `${newDebitUID}_Debit.pdf`);
     console.log(`[DEBIT] PDF uploaded: ${pdfUrl}`);
 
-    // ── Update ONLY Selected/Matched Rows ─────────────────────────────────
+    // ── Find Next Empty Row in Material_Debit_Done ────────────────────────
+    const doneSheetResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: DebitID,
+      range: 'Material_Debit_Done!A:A',
+    });
+
+    const doneSheetRows = doneSheetResponse.data.values || [];
+    let nextEmptyRow = doneSheetRows.length + 1;
+
+    console.log(`[DEBIT] Material_Debit_Done next empty row: ${nextEmptyRow}`);
+
+    // ── Insert Rows in Material_Debit_Done ────────────────────────────────
+    // A=UID | B=Debit_Date | C=Status | D=Debit_Number | E=Debit_Url | F=Debit_Pdf_Total_Amount
     const batchData = [];
 
     for (const row of matchedRows) {
-      const r = row.actualRowIndex;
-      
-      batchData.push(
-        { range: `Contractor_Material_Debit!AC${r}`, values: [[currentDateTime]] },
-        { range: `Contractor_Material_Debit!AD${r}`, values: [[status]] },
-        { range: `Contractor_Material_Debit!AE${r}`, values: [[newDebitUID]] },
-        { range: `Contractor_Material_Debit!AF${r}`, values: [[pdfUrl]] },
-        { range: `Contractor_Material_Debit!AG${r}`, values: [[frontendTotalAmount]] },
-      );
+      batchData.push({
+        range: `Material_Debit_Done!A${nextEmptyRow}:F${nextEmptyRow}`,
+        values: [[
+          row.uid,
+          currentDateTime,
+          status,
+          newDebitUID,
+          pdfUrl,
+          frontendTotalAmount,
+        ]],
+      });
+
+      console.log(`[DEBIT] Queued → Row ${nextEmptyRow} | UID="${row.uid}" | PO="${row.poNo}"`);
+      nextEmptyRow++;
     }
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: DebitID,
-      resource: { valueInputOption: 'USER_ENTERED', data: batchData },
+      resource: {
+        valueInputOption: 'USER_ENTERED',
+        data: batchData,
+      },
     });
 
-    // ── Get unique POs for summary ────────────────────────────────────────
+    console.log(`[DEBIT] ✓ Inserted ${matchedRows.length} rows into Material_Debit_Done sheet`);
+
     const uniquePOs = [...new Set(matchedRows.map(r => r.poNo))];
 
-    console.log(`[DEBIT] ✓ Updated ${matchedRows.length} rows with UID: ${newDebitUID}`);
+    console.log(`[DEBIT] ✓ Debit UID: ${newDebitUID}`);
     console.log(`[DEBIT] ✓ Unique POs: ${uniquePOs.join(', ')}`);
     console.log(`[DEBIT] ═══════════════════════════════════════════════════\n`);
 
     res.json({
       success: true,
-      message: `${matchedRows.length} materials updated successfully`,
+      message: `${matchedRows.length} materials inserted into Material_Debit_Done successfully`,
       data: {
         debitUID: newDebitUID,
         pdfUrl,
@@ -449,13 +1438,14 @@ router.post('/Contractor_Material_Debit', async (req, res) => {
         totalMaterials: matchedRows.length,
         totalPOs: uniquePOs.length,
         totalAmount: frontendTotalAmount,
-        totalAmountFormatted: `₹${frontendTotalAmount.toLocaleString('en-IN')}`,
-        updatedRows: matchedRows.map(r => ({
-          row: r.actualRowIndex,
+        totalAmountFormatted: `₹${Number(frontendTotalAmount).toLocaleString('en-IN')}`,
+        insertedRows: matchedRows.map((r, i) => ({
+          sheetRow: doneSheetRows.length + 1 + i,
+          uid: r.uid,
           poNo: r.poNo,
-          material: r.materialName
-        }))
-      }
+          material: r.materialName,
+        })),
+      },
     });
 
   } catch (error) {
