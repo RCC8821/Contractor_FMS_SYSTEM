@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const cloudinary = require("cloudinary").v2;
 
 // Contractor Selection APIs
+const contractorRoutes = require('./All_Fms_Api/Contractor_Selection/RequirementForm');
 const RequirementForm = require('./All_Fms_Api/Contractor_Selection/RequirementForm');
 const Approval_For_Meeting = require("./All_Fms_Api/Contractor_Selection/Approval_For_Meeting")
 const First_Meeting_Attend = require ('./All_Fms_Api/Contractor_Selection/1st_Meeting_Attend')
@@ -70,6 +71,7 @@ cloudinary.config({
 
 // 6. Routes
 app.use('/api', authRoutes);
+app.use('/api', contractorRoutes);
 app.use('/api', RequirementForm);
 app.use('/api',Approval_For_Meeting)
 app.use('/api',First_Meeting_Attend)

@@ -1,4 +1,3 @@
-// src/features/api/apiSlice.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const apiSlice = createApi({
@@ -6,33 +5,18 @@ export const apiSlice = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: import.meta.env.VITE_BACKEND_URL,
   }),
+  tagTypes: ['Dropdowns', 'Contractors'],
   endpoints: (builder) => ({
-    getProjectIds: builder.query({
-      query: () => '/api/enquiry-capture',
-      transformResponse: (response) => {
-        const rows = response.data || [];
-
-        // Correctly accessing 'Project_ID'
-        const ids = rows
-          .map(row => row.Project_ID) 
-          .filter(id => id && id.toString().trim() !== '')
-          .map(id => id.toString().trim())
-          .filter((v, i, a) => a.indexOf(v) === i)
-          .sort();
-
-        console.log('Final Dropdown IDs:', ids);
-        return ids;
-      },
-    }),
-
-    getEnquiryById: builder.query({
-      query: () => '/api/enquiry-capture',
-      transformResponse: (response, meta, arg) => {
-        const projectId = arg?.toString().trim();
-        const rows = response.data || [];
-        // Correctly comparing with 'Project_ID'
-        return rows.find(r => r.Project_ID?.toString().trim() === projectId) || null;
-      },
+    getProjectDropdowns: builder.query({
+      query: () => '/api/project-dropdowns',
+      transformResponse: (res) => ({
+        projectNames: res.projectNames || [],
+        projectTypes: res.projectTypes || [],
+        workCategories: res.workCategories || [],
+        contractorTypes: res.contractorTypes || [],
+        units: res.units || [], // Receive units from backend
+      }),
+      providesTags: ['Dropdowns'],
     }),
 
     submitContractorForm: builder.mutation({
@@ -41,12 +25,12 @@ export const apiSlice = createApi({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: ['Contractors'],
     }),
   }),
 });
 
 export const {
-  useLazyGetProjectIdsQuery,
-  useLazyGetEnquiryByIdQuery,
+  useGetProjectDropdownsQuery,
   useSubmitContractorFormMutation,
 } = apiSlice;
