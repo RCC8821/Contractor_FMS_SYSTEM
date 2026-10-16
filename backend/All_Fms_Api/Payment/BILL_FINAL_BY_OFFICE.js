@@ -1,9 +1,324 @@
 
+// const express = require('express');
+// const { sheets, spreadsheetId ,workSpredSheetId} = require('../../config/googleSheet');
+// const router = express.Router();
+
+
+
+// router.get('/Done_Bills', async (req, res) => {
+//   try {
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: 'Contractor_Payment_FMS!A7:AF',
+//     });
+
+//     let rows = response.data.values || [];
+//     if (rows.length <= 1) {
+//       return res.json({ success: true, data: [] });
+//     }
+
+//     rows = rows.slice(1);
+
+//     const doneBills = rows
+//       .filter(row => (row[31] || '').toString().trim() === 'Done')
+//       .map(row => ({
+//         rccBillNo: row[1] || '',
+//         projectId: (row[2] || '').toString().trim(),
+//         contractorName: (row[5] || '').toString().trim(),
+//         firmName: (row[6] || '').toString().trim(),
+//         workName: (row[7] || '').toString().trim(),
+//         WorkOrderNo: (row[16] || '').toString().trim(),
+//         UPToDatePaidAmount: row[28] || '0',
+//         BalanceAmount: row[29] || '0',
+//       }));
+
+//     res.json({
+//       success: true,
+//       data: doneBills
+//     });
+
+//   } catch (error) {
+//     console.error('Error in /Done_Bills:', error.message);
+//     res.status(500).json({ success: false, error: 'Failed to fetch data' });
+//   }
+// });
+
+// router.get('/Bill_Final_By_Office', async (req, res) => {
+//   try {
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: 'Contractor_Payment_FMS!A7:AF',
+//     });
+
+//     let rows = response.data.values || [];
+//     if (rows.length <= 1) {
+//       return res.json({ success: true, data: [], totalPending: 0 });
+//     }
+
+//     rows = rows.slice(1); // Header skip
+
+//     // ✅ Parse all rows (Done + Pending dono)
+//     const allBills = rows.map(row => ({
+//       rccBillNo: row[1] || '',
+//       projectId: (row[2] || '').toString().trim(),
+//       projectName: (row[3] || '').toString().trim(),
+//       siteEngineer: row[4] || '',
+//       contractorName: (row[5] || '').toString().trim(),
+//       firmName: (row[6] || '').toString().trim(),
+//       workName: (row[7] || '').toString().trim(),
+//       contractorBillNo: row[8] || '',
+//       billDate: row[9] || '',
+//       billUrl: row[10] || '',
+//       PreviousBillUrl: row[11] || '',
+//       measurementSheetUrl: row[12] || '',
+//       attendanceSheetUrl: row[13] || '',
+//       rccSummarySheetNo: row[14] || '',
+//       rccSummarySheetUrl: row[15] || '',
+//       WorkOrderNo: (row[16] || '').toString().trim(),
+//       workOrderUrl: row[17] || '',
+//       WorkOrderValue: row[18] || '',
+//       billAmount: row[19] || '',
+//       NETAMOUNTCurrentAmount: row[26] || '',
+//       PreviousBillAmount: row[27] || '',
+//       UPToDatePaidAmount: row[28] || '',
+//       BalanceAmount: row[29] || '',
+//       remark: row[30] || '',
+//       status5: (row[31] || '').toString().trim(),
+//     }));
+
+//     // ✅ Separate Done and Pending bills
+//     const doneBills = allBills.filter(bill => bill.status5 === 'Done');
+//     const pendingBills = allBills.filter(bill => bill.status5 !== 'Done');
+
+//     // ✅ Attach previous done bill to each pending bill
+//     const billsWithPrevious = pendingBills.map(bill => {
+//       const previousDoneBill = doneBills
+//         .filter(done => 
+//           done.projectId === bill.projectId &&
+//           done.contractorName === bill.contractorName &&
+//           done.firmName === bill.firmName &&
+//           done.workName === bill.workName &&
+//           done.WorkOrderNo === bill.WorkOrderNo
+//         )
+//         .sort((a, b) => {
+//           // Latest done bill first (by RCC Bill No descending)
+//           return b.rccBillNo.localeCompare(a.rccBillNo);
+//         })[0]; // Get the latest match
+
+//       return {
+//         ...bill,
+//         previousDoneBill: previousDoneBill || null
+//       };
+//     });
+
+//     res.json({
+//       success: true,
+//       totalPending: billsWithPrevious.length,
+//       data: billsWithPrevious
+//     });
+
+//   } catch (error) {
+//     console.error('Error in /Bill_Final_By_Office:', error.message);
+//     res.status(500).json({ success: false, error: 'Failed to fetch data' });
+//   }
+// });
+
+
+
+// router.post('/updateBillFinalByRcc', async (req, res) => {
+//   try {
+//     const {
+//       rccBillNo,
+//       workOrderNo5,                   // Q column
+//       workOrderUrl,                   // R column  
+//       workOrderValue,                 // S column
+//       debitAmount,                    // U column
+//       actualBillAmount,               // V column
+//       sdAmount,                       // Z column (neeche wale code ke hisab se)
+//       materialDebitAmount5,           // Y column
+//       cgst,                           // W column
+//       sgst,                           // X column
+//       netAmount,                      // AA column
+//       Previous_Bill_Amount_5,         // AB column
+//       UP_To_Date_Paid_Amount_5,       // AC column
+//       Balance_Amount_6,               // AD column
+//       remark,                         // AE column
+//       status                          // AF column
+//     } = req.body;
+
+//     if (!rccBillNo) {
+//       return res.status(400).json({ success: false, error: 'RCC Bill No is required' });
+//     }
+
+//     // Step 1: B7 se neeche tak B column fetch karo
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: 'Contractor_Payment_FMS!B7:B',
+//     });
+
+//     const rows = response.data.values || [];
+
+//     // Step 2: Exact match dhundho (trim karke)
+//     const rowIndex = rows.findIndex(val => 
+//       val && val[0] && val[0].toString().trim() === rccBillNo.toString().trim()
+//     );
+
+//     if (rowIndex === -1) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         error: `RCC Bill No "${rccBillNo}" not found in the sheet.` 
+//       });
+//     }
+
+//     // Sahi row number calculate karo (B7 se shuru → index 0 = row 7)
+//     const targetRowNumber = 7 + rowIndex;
+//     console.log(`✅ Updating Row: ${targetRowNumber} for Bill: ${rccBillNo}`);
+
+//     // Step 3: Updates array banao
+//     const updates = [];
+//     const addUpdate = (col, value) => {
+//       if (value !== undefined && value !== null && value !== '') {
+//         updates.push({
+//           range: `Contractor_Payment_FMS!${col}${targetRowNumber}`,
+//           values: [[value]]
+//         });
+//       }
+//     };
+
+//     // ✅ Exact mapping neeche wale code ke according
+//     addUpdate('Q', workOrderNo5);
+//     addUpdate('R', workOrderUrl);
+//     addUpdate('S', workOrderValue);
+
+//     addUpdate('U', debitAmount);          // Debit Amount → U
+//     addUpdate('V', materialDebitAmount5);
+//      // Material Debit → Y
+//     addUpdate('W', actualBillAmount);      // Actual Bill Amount → V
+
+//     addUpdate('X', cgst);                 // CGST → W
+//     addUpdate('Y', sgst);                 // SGST → X
+
+//     addUpdate('Z', sdAmount);             // SD Amount → Z
+
+//     addUpdate('AA', netAmount);           // Net Amount → AA
+
+//     addUpdate('AB', Previous_Bill_Amount_5);
+//     addUpdate('AC', UP_To_Date_Paid_Amount_5);
+//     addUpdate('AD', Balance_Amount_6);
+//     addUpdate('AE', remark);
+//     addUpdate('AF', status);
+
+//     if (updates.length === 0) {
+//       return res.status(400).json({ success: false, error: 'No fields provided to update' });
+//     }
+
+//     // Batch update
+//     await sheets.spreadsheets.values.batchUpdate({
+//       spreadsheetId,
+//       resource: {
+//         valueInputOption: 'USER_ENTERED',
+//         data: updates,
+//       },
+//     });
+
+//     res.json({
+//       success: true,
+//       message: `Row ${targetRowNumber} updated successfully!`,
+//       rccBillNo,
+//       rowNumber: targetRowNumber,
+//       updatedFields: updates.length
+//     });
+
+//   } catch (error) {
+//     console.error('❌ Error:', error.message);
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// });
+
+
+
+
+// router.get('/work-orders', async (req, res) => {
+//   try {
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId: workSpredSheetId,
+//       range: 'Contractor_Work_Order!B:I',
+//     });
+
+//     const rows = response.data.values || [];
+//     if (rows.length <= 1) {
+//       return res.json({
+//         success: true,
+//         message: 'No data found',
+//         columns: {
+//           Project_ID: [],
+//           Project_Name: [],
+//           Contractor_Name: [],
+//           Contractor_Firm_Name: [],
+//           Work_Type: [],
+//           Work_Order_No: [],
+//           Work_Order_Url: [],
+//           Work_Order_Value: []
+//         }
+//       });
+//     }
+
+//     // Header skip karo
+//     const dataRows = rows.slice(1);
+
+//     // YEHI CHANGE KARNA HAI — NO SET, NO SORT, RAW DATA BHEJO!
+//     const columns = {
+//       Project_ID:          dataRows.map(r => (r[0] || '').trim()),
+//       Project_Name:        dataRows.map(r => (r[1] || '').trim()),
+//       Contractor_Name:     dataRows.map(r => (r[2] || '').trim()),
+//       Contractor_Firm_Name:dataRows.map(r => (r[3] || '').trim()),
+//       Work_Type:           dataRows.map(r => (r[4] || '').trim()),
+//       Work_Order_No:       dataRows.map(r => (r[5] || '').trim()),
+//       Work_Order_Url:      dataRows.map(r => (r[6] || '').trim()),
+//       Work_Order_Value:    dataRows.map(r => r[7] || '')
+//     };
+
+//     // Optional: Sirf non-empty rows bhejo
+//     const filteredIndices = columns.Project_ID
+//       .map((pid, i) => pid ? i : -1)
+//       .filter(i => i !== -1);
+
+//     const filteredColumns = {
+//       Project_ID:          filteredIndices.map(i => columns.Project_ID[i]),
+//       Project_Name:        filteredIndices.map(i => columns.Project_Name[i]),
+//       Contractor_Name:     filteredIndices.map(i => columns.Contractor_Name[i]),
+//       Contractor_Firm_Name:filteredIndices.map(i => columns.Contractor_Firm_Name[i]),
+//       Work_Type:           filteredIndices.map(i => columns.Work_Type[i]),
+//       Work_Order_No:       filteredIndices.map(i => columns.Work_Order_No[i]),
+//       Work_Order_Url:      filteredIndices.map(i => columns.Work_Order_Url[i]),
+//       Work_Order_Value:    filteredIndices.map(i => columns.Work_Order_Value[i])
+//     };
+
+//     res.json({
+//       success: true,
+//       totalRows: filteredColumns.Project_ID.length,
+//       columns: filteredColumns  // ← Ab relation safe hai!
+//     });
+
+//   } catch (error) {
+//     console.error('Error in /work-orders:', error.message);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to fetch data',
+//       details: error.message
+//     });
+//   }
+// });
+
+
+// module.exports = router;
+
+
+
+
 const express = require('express');
-const { sheets, spreadsheetId ,workSpredSheetId} = require('../../config/googleSheet');
+const { sheets, spreadsheetId, workSpredSheetId } = require('../../config/googleSheet');
 const router = express.Router();
-
-
 
 router.get('/Done_Bills', async (req, res) => {
   try {
@@ -55,9 +370,8 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
       return res.json({ success: true, data: [], totalPending: 0 });
     }
 
-    rows = rows.slice(1); // Header skip
+    rows = rows.slice(1);
 
-    // ✅ Parse all rows (Done + Pending dono)
     const allBills = rows.map(row => ({
       rccBillNo: row[1] || '',
       projectId: (row[2] || '').toString().trim(),
@@ -86,24 +400,19 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
       status5: (row[31] || '').toString().trim(),
     }));
 
-    // ✅ Separate Done and Pending bills
     const doneBills = allBills.filter(bill => bill.status5 === 'Done');
     const pendingBills = allBills.filter(bill => bill.status5 !== 'Done');
 
-    // ✅ Attach previous done bill to each pending bill
     const billsWithPrevious = pendingBills.map(bill => {
       const previousDoneBill = doneBills
-        .filter(done => 
+        .filter(done =>
           done.projectId === bill.projectId &&
           done.contractorName === bill.contractorName &&
           done.firmName === bill.firmName &&
           done.workName === bill.workName &&
           done.WorkOrderNo === bill.WorkOrderNo
         )
-        .sort((a, b) => {
-          // Latest done bill first (by RCC Bill No descending)
-          return b.rccBillNo.localeCompare(a.rccBillNo);
-        })[0]; // Get the latest match
+        .sort((a, b) => b.rccBillNo.localeCompare(a.rccBillNo))[0];
 
       return {
         ...bill,
@@ -123,58 +432,51 @@ router.get('/Bill_Final_By_Office', async (req, res) => {
   }
 });
 
-
-
 router.post('/updateBillFinalByRcc', async (req, res) => {
   try {
     const {
       rccBillNo,
-      workOrderNo5,                   // Q column
-      workOrderUrl,                   // R column  
-      workOrderValue,                 // S column
-      debitAmount,                    // U column
-      actualBillAmount,               // V column
-      sdAmount,                       // Z column (neeche wale code ke hisab se)
-      materialDebitAmount5,           // Y column
-      cgst,                           // W column
-      sgst,                           // X column
-      netAmount,                      // AA column
-      Previous_Bill_Amount_5,         // AB column
-      UP_To_Date_Paid_Amount_5,       // AC column
-      Balance_Amount_6,               // AD column
-      remark,                         // AE column
-      status                          // AF column
+      workOrderNo5,
+      workOrderUrl,
+      workOrderValue,
+      debitAmount,
+      actualBillAmount,
+      sdAmount,
+      materialDebitAmount5,
+      cgst,
+      sgst,
+      netAmount,
+      Previous_Bill_Amount_5,
+      UP_To_Date_Paid_Amount_5,
+      Balance_Amount_6,
+      remark,
+      status
     } = req.body;
 
     if (!rccBillNo) {
       return res.status(400).json({ success: false, error: 'RCC Bill No is required' });
     }
 
-    // Step 1: B7 se neeche tak B column fetch karo
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Contractor_Payment_FMS!B7:B',
     });
 
     const rows = response.data.values || [];
-
-    // Step 2: Exact match dhundho (trim karke)
-    const rowIndex = rows.findIndex(val => 
+    const rowIndex = rows.findIndex(val =>
       val && val[0] && val[0].toString().trim() === rccBillNo.toString().trim()
     );
 
     if (rowIndex === -1) {
-      return res.status(404).json({ 
-        success: false, 
-        error: `RCC Bill No "${rccBillNo}" not found in the sheet.` 
+      return res.status(404).json({
+        success: false,
+        error: `RCC Bill No "${rccBillNo}" not found in the sheet.`
       });
     }
 
-    // Sahi row number calculate karo (B7 se shuru → index 0 = row 7)
     const targetRowNumber = 7 + rowIndex;
     console.log(`✅ Updating Row: ${targetRowNumber} for Bill: ${rccBillNo}`);
 
-    // Step 3: Updates array banao
     const updates = [];
     const addUpdate = (col, value) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -185,23 +487,16 @@ router.post('/updateBillFinalByRcc', async (req, res) => {
       }
     };
 
-    // ✅ Exact mapping neeche wale code ke according
     addUpdate('Q', workOrderNo5);
     addUpdate('R', workOrderUrl);
     addUpdate('S', workOrderValue);
-
-    addUpdate('U', debitAmount);          // Debit Amount → U
+    addUpdate('U', debitAmount);
     addUpdate('V', materialDebitAmount5);
-     // Material Debit → Y
-    addUpdate('W', actualBillAmount);      // Actual Bill Amount → V
-
-    addUpdate('X', cgst);                 // CGST → W
-    addUpdate('Y', sgst);                 // SGST → X
-
-    addUpdate('Z', sdAmount);             // SD Amount → Z
-
-    addUpdate('AA', netAmount);           // Net Amount → AA
-
+    addUpdate('W', actualBillAmount);
+    addUpdate('X', cgst);
+    addUpdate('Y', sgst);
+    addUpdate('Z', sdAmount);
+    addUpdate('AA', netAmount);
     addUpdate('AB', Previous_Bill_Amount_5);
     addUpdate('AC', UP_To_Date_Paid_Amount_5);
     addUpdate('AD', Balance_Amount_6);
@@ -212,7 +507,6 @@ router.post('/updateBillFinalByRcc', async (req, res) => {
       return res.status(400).json({ success: false, error: 'No fields provided to update' });
     }
 
-    // Batch update
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
       resource: {
@@ -235,17 +529,55 @@ router.post('/updateBillFinalByRcc', async (req, res) => {
   }
 });
 
-
-
-
 router.get('/work-orders', async (req, res) => {
   try {
+    // 1️⃣ Contractor / Firm / Work Order details (dropdowns के लिए)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: workSpredSheetId,
       range: 'Contractor_Work_Order!B:I',
     });
 
     const rows = response.data.values || [];
+
+    // 2️⃣ Work Order Need Yes/No — Cotractor Billing Project Data sheet के H & I से
+    let workOrderNeedMap = {};
+    try {
+      const needRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: workSpredSheetId,
+        range: "'Cotractor Billing Project Data'!H:I",
+      });
+      const needRows = needRes.data.values || [];
+      // header skip
+      needRows.slice(1).forEach((r) => {
+        const workName = (r[0] || '').toString().trim();
+        const needVal = (r[1] || '').toString().trim();
+        if (workName) {
+          // lowercase key for reliable matching
+          workOrderNeedMap[workName.toLowerCase()] = needVal.toLowerCase();
+        }
+      });
+      console.log('✅ WorkOrderNeedMap loaded:', Object.keys(workOrderNeedMap).length, 'items');
+    } catch (needErr) {
+      console.error('⚠️ Could not load Work Order Need map:', needErr.message);
+      // fallback – try without extra quotes
+      try {
+        const needRes2 = await sheets.spreadsheets.values.get({
+          spreadsheetId: workSpredSheetId,
+          range: 'Cotractor Billing Project Data!H:I',
+        });
+        const needRows2 = needRes2.data.values || [];
+        needRows2.slice(1).forEach((r) => {
+          const workName = (r[0] || '').toString().trim();
+          const needVal = (r[1] || '').toString().trim();
+          if (workName) {
+            workOrderNeedMap[workName.toLowerCase()] = needVal.toLowerCase();
+          }
+        });
+      } catch (e2) {
+        console.error('❌ Work Order Need map completely failed:', e2.message);
+      }
+    }
+
     if (rows.length <= 1) {
       return res.json({
         success: true,
@@ -258,46 +590,45 @@ router.get('/work-orders', async (req, res) => {
           Work_Type: [],
           Work_Order_No: [],
           Work_Order_Url: [],
-          Work_Order_Value: []
+          Work_Order_Value: [],
+          Work_Order_Need_Map: workOrderNeedMap,
         }
       });
     }
 
-    // Header skip karo
     const dataRows = rows.slice(1);
 
-    // YEHI CHANGE KARNA HAI — NO SET, NO SORT, RAW DATA BHEJO!
     const columns = {
-      Project_ID:          dataRows.map(r => (r[0] || '').trim()),
-      Project_Name:        dataRows.map(r => (r[1] || '').trim()),
-      Contractor_Name:     dataRows.map(r => (r[2] || '').trim()),
-      Contractor_Firm_Name:dataRows.map(r => (r[3] || '').trim()),
-      Work_Type:           dataRows.map(r => (r[4] || '').trim()),
-      Work_Order_No:       dataRows.map(r => (r[5] || '').trim()),
-      Work_Order_Url:      dataRows.map(r => (r[6] || '').trim()),
-      Work_Order_Value:    dataRows.map(r => r[7] || '')
+      Project_ID:           dataRows.map(r => (r[0] || '').trim()),
+      Project_Name:         dataRows.map(r => (r[1] || '').trim()),
+      Contractor_Name:      dataRows.map(r => (r[2] || '').trim()),
+      Contractor_Firm_Name: dataRows.map(r => (r[3] || '').trim()),
+      Work_Type:            dataRows.map(r => (r[4] || '').trim()),
+      Work_Order_No:        dataRows.map(r => (r[5] || '').trim()),
+      Work_Order_Url:       dataRows.map(r => (r[6] || '').trim()),
+      Work_Order_Value:     dataRows.map(r => r[7] || ''),
     };
 
-    // Optional: Sirf non-empty rows bhejo
     const filteredIndices = columns.Project_ID
-      .map((pid, i) => pid ? i : -1)
+      .map((pid, i) => (pid ? i : -1))
       .filter(i => i !== -1);
 
     const filteredColumns = {
-      Project_ID:          filteredIndices.map(i => columns.Project_ID[i]),
-      Project_Name:        filteredIndices.map(i => columns.Project_Name[i]),
-      Contractor_Name:     filteredIndices.map(i => columns.Contractor_Name[i]),
-      Contractor_Firm_Name:filteredIndices.map(i => columns.Contractor_Firm_Name[i]),
-      Work_Type:           filteredIndices.map(i => columns.Work_Type[i]),
-      Work_Order_No:       filteredIndices.map(i => columns.Work_Order_No[i]),
-      Work_Order_Url:      filteredIndices.map(i => columns.Work_Order_Url[i]),
-      Work_Order_Value:    filteredIndices.map(i => columns.Work_Order_Value[i])
+      Project_ID:           filteredIndices.map(i => columns.Project_ID[i]),
+      Project_Name:         filteredIndices.map(i => columns.Project_Name[i]),
+      Contractor_Name:      filteredIndices.map(i => columns.Contractor_Name[i]),
+      Contractor_Firm_Name: filteredIndices.map(i => columns.Contractor_Firm_Name[i]),
+      Work_Type:            filteredIndices.map(i => columns.Work_Type[i]),
+      Work_Order_No:        filteredIndices.map(i => columns.Work_Order_No[i]),
+      Work_Order_Url:       filteredIndices.map(i => columns.Work_Order_Url[i]),
+      Work_Order_Value:     filteredIndices.map(i => columns.Work_Order_Value[i]),
+      Work_Order_Need_Map:  workOrderNeedMap, // ✅ { "jcb / earthmoving work": "no", ... }
     };
 
     res.json({
       success: true,
       totalRows: filteredColumns.Project_ID.length,
-      columns: filteredColumns  // ← Ab relation safe hai!
+      columns: filteredColumns
     });
 
   } catch (error) {
@@ -310,9 +641,4 @@ router.get('/work-orders', async (req, res) => {
   }
 });
 
-
 module.exports = router;
-
-
-
-
