@@ -1,6 +1,4 @@
 
-
-
 // import React, { useState, useEffect, useMemo, useRef } from "react";
 // import {
 //   useGetPendingPaymentsQuery,
@@ -22,7 +20,7 @@
 //   label, id, initialValue, onValueChange,
 //   color = "gray", isDate = false, isNumeric = true,
 //   options = null, readOnly = false, placeholder = "",
-//   isLoading = false
+//   isLoading = false, maxLimit = undefined
 // }) => {
 //   const [localValue, setLocalValue] = useState(initialValue || "");
 
@@ -41,21 +39,19 @@
 //       return;
 //     }
 
-//     // ✅ Round Up field - real-time update
 //     if (label.includes("Round Up")) {
 //       if (/^-?\d*\.?\d{0,2}$/.test(value) ||
 //         value === '' || value === '-' ||
 //         value === '.' || value === '-.') {
 //         setLocalValue(value);
-//         onValueChange(id, value);  // ✅ Real-time update
+//         onValueChange(id, value);
 //       }
 //       return;
 //     }
 
-//     // ✅ Other numeric fields - real-time update
 //     if (/^-?[\d.]*$/.test(value)) {
 //       setLocalValue(value);
-//       onValueChange(id, value);  // ✅ Real-time update
+//       onValueChange(id, value);
 //     }
 //   };
 
@@ -75,10 +71,16 @@
 //       if (isNaN(num)) {
 //         val = "0.00";
 //       } else {
-//         // ✅ Round Up clamp between -9 to 9
 //         if (label.includes("Round Up")) {
 //           num = Math.max(-9, Math.min(9, num));
 //         }
+        
+//         // ✅ Max = Payable + ₹9
+//         if (maxLimit !== undefined && num > maxLimit) {
+//           alert(`Amount cannot exceed Payable Amount + ₹9\n(Maximum Allowed: ₹${maxLimit.toFixed(2)})`);
+//           num = maxLimit;
+//         }
+
 //         val = num.toFixed(2);
 //       }
 //     }
@@ -138,7 +140,8 @@
 //   const inputStyle = `w-full text-lg font-semibold border-b-2 outline-none py-1 transition duration-150 cursor-default
 //     ${color === "green" ? "border-green-300 text-green-700 bg-gray-50"
 //       : color === "purple" ? "border-purple-300 text-purple-700 bg-purple-50"
-//       : "border-red-300 text-red-700 bg-gray-50"}`;
+//         : color === "red" ? "border-red-300 text-red-700 bg-gray-50"
+//         : "border-gray-300 text-gray-700 bg-gray-50"}`;
 //   return (
 //     <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
 //       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{label}</label>
@@ -242,17 +245,14 @@
 
 //   const getNumericValue = (billId, field) => formatAmount(billInputData[billId]?.[field]);
 
-//   // ═══════════════════════════════════════════════════════════
-//   // ✅ ADVANCE HELPERS - REAL ADVANCE ONLY
-//   // ═══════════════════════════════════════════════════════════
 //   const isFullyPaidByAdvance = (bill) => {
 //     const billAmount = formatAmount(bill.billAmount);
 //     const previousPaid = formatAmount(bill.latestPaidAmount8 || 0);
 //     const advance = formatAmount(bill.advanceAmount || 0);
 
 //     return advance > 0 &&
-//            (previousPaid + advance) >= billAmount &&
-//            previousPaid < billAmount;
+//       (previousPaid + advance) >= billAmount &&
+//       previousPaid < billAmount;
 //   };
 
 //   const toggleBillSelection = (billId) => {
@@ -300,7 +300,7 @@
 //   };
 
 //   // ═══════════════════════════════════════════════════════════
-//   // ✅ CALCULATIONS WITH ADVANCE + ROUND UP
+//   // ✅ CALCULATIONS — Balance never goes negative for +9 overpay
 //   // ═══════════════════════════════════════════════════════════
 //   const calculatedBillsData = useMemo(() => {
 //     const data = {};
@@ -315,49 +315,81 @@
 //       const inputs = billInputData[uniqueId] || {};
 //       const hasAnyPreviousData = latestPaid > 0 || latestTDS > 0 || latestBalance > 0;
 
-//       // ✅ Fully paid by advance check (REAL ADVANCE ONLY)
 //       const fullyPaidByAdvance =
 //         advanceAmount > 0 &&
 //         (latestPaid + advanceAmount) >= billAmount &&
 //         latestPaid < billAmount;
 
-//       // ✅ Effective advance
-//       const maxAdvanceUsable = Math.max(billAmount - latestPaid, 0);
-//       const effectiveAdvance = Math.min(advanceAmount, maxAdvanceUsable);
-//       const excessAdvance = advanceAmount > maxAdvanceUsable ? advanceAmount - maxAdvanceUsable : 0;
-
 //       let tdsAmount = latestTDS > 0 ? 0 : getNumericValue(uniqueId, 'tds_amount_8');
-//       const currentPaidAmount = fullyPaidByAdvance ? 0 : getNumericValue(uniqueId, 'paid_amount_8');
 
-//       // ✅ Round Up value - real-time
+//       let effectiveAdvance;
+//       let excessAdvance;
+
+//       if (fullyPaidByAdvance) {
+//         const actualPaidFromAdvance = Math.max(billAmount - tdsAmount - latestPaid, 0);
+//         effectiveAdvance = Math.min(actualPaidFromAdvance, advanceAmount);
+//         excessAdvance = advanceAmount - effectiveAdvance;
+//       } else {
+//         const maxAdvanceUsable = Math.max(billAmount - latestPaid, 0);
+//         effectiveAdvance = Math.min(advanceAmount, maxAdvanceUsable);
+//         excessAdvance = advanceAmount > maxAdvanceUsable ? advanceAmount - maxAdvanceUsable : 0;
+//       }
+
+//       // Payable Amount
+//       let payableAmount;
+//       if (fullyPaidByAdvance) {
+//         payableAmount = Math.max(billAmount - tdsAmount, 0);
+//       } else if (latestBalance > 0) {
+//         payableAmount = Math.max(latestBalance - effectiveAdvance - tdsAmount, 0);
+//       } else {
+//         payableAmount = Math.max(billAmount - tdsAmount - effectiveAdvance, 0);
+//       }
+
+//       let currentPaidAmount = fullyPaidByAdvance ? 0 : getNumericValue(uniqueId, 'paid_amount_8');
+
+//       // Round Up (±9)
 //       let roundUpValue = 0;
 //       if (!fullyPaidByAdvance) {
 //         const rawRoundUp = inputs.round_up;
 //         if (rawRoundUp !== undefined && rawRoundUp !== null && rawRoundUp !== "" && rawRoundUp !== "-" && rawRoundUp !== "." && rawRoundUp !== "-.") {
 //           const parsed = parseFloat(rawRoundUp);
 //           if (!isNaN(parsed)) {
-//             // Clamp between -9 and 9
 //             roundUpValue = Math.max(-9, Math.min(9, parsed));
 //           }
 //         }
 //       }
 
-//       // ✅ Payable = Bill - TDS - Advance
-//       let payableAmount;
-//       if (latestBalance > 0) {
-//         payableAmount = Math.max(latestBalance - effectiveAdvance, 0);
-//       } else {
-//         payableAmount = Math.max(billAmount - tdsAmount - effectiveAdvance, 0);
-//       }
-
 //       const totalPaid = latestPaid + currentPaidAmount;
 
-//       // ✅ Balance calculation with Round Up
-//       let balanceAmount = billAmount - (totalPaid + tdsAmount + effectiveAdvance) + roundUpValue;
-//       balanceAmount = Math.max(balanceAmount, 0);
+//       // ─────────────────────────────────────────────────────────
+//       // ✅ BALANCE LOGIC (FIXED)
+//       // +9 overpay → Balance = 0 (minus में नहीं जाएगा)
+//       // Round Up still applies for small adjustments
+//       // ─────────────────────────────────────────────────────────
+//       let balanceAmount;
+//       if (fullyPaidByAdvance) {
+//         balanceAmount = Math.max(billAmount - (latestPaid + tdsAmount + effectiveAdvance), 0);
+//       } else {
+//         // Raw balance
+//         let rawBalance = billAmount - (totalPaid + tdsAmount + effectiveAdvance) + roundUpValue;
+//         rawBalance = Math.round(rawBalance * 100) / 100;
 
-//       const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS + effectiveAdvance + roundUpValue;
-//       if (Math.abs(totalAllAmounts - billAmount) <= 0.01 || fullyPaidByAdvance) {
+//         // ✅ KEY FIX: +9 overpay को negative मत मानो → 0 दिखाओ
+//         // (Current Paid <= Payable + 9 होने पर balance floor 0)
+//         if (currentPaidAmount > 0 && currentPaidAmount <= payableAmount + 9) {
+//           // Overpay / exact pay within allowed +9 window → settle as 0
+//           // Round Up still can adjust if user explicitly enters it for other reasons
+//           balanceAmount = Math.max(0, rawBalance);
+//         } else {
+//           balanceAmount = Math.max(0, rawBalance);
+//         }
+
+//         if (balanceAmount === -0) balanceAmount = 0;
+//       }
+
+//       // Near-exact match safety
+//       const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS + effectiveAdvance + roundUpValue + tdsAmount;
+//       if (Math.abs(totalAllAmounts - billAmount) <= 0.01 && !fullyPaidByAdvance) {
 //         balanceAmount = 0;
 //       }
 
@@ -388,7 +420,6 @@
 //     }, 0);
 //   }, [selectedBillIds, calculatedBillsData]);
 
-//   // ✅ Check if all selected are fully paid by advance
 //   const allSelectedAreAdvance = useMemo(() => {
 //     if (selectedBillIds.length === 0) return false;
 //     return selectedBillIds.every((billId) => {
@@ -407,12 +438,10 @@
 //       return;
 //     }
 
-//     let advanceBillCount = 0;
 //     let normalBillCount = 0;
 //     selectedBillIds.forEach((billId) => {
 //       const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
-//       if (bill && isFullyPaidByAdvance(bill)) advanceBillCount++;
-//       else normalBillCount++;
+//       if (!(bill && isFullyPaidByAdvance(bill))) normalBillCount++;
 //     });
 
 //     if (normalBillCount > 0) {
@@ -424,6 +453,19 @@
 //         alert(`Please fill: ${missing.join(", ")}`);
 //         return;
 //       }
+//     }
+
+//     // Double-check max limit
+//     const overpaidBills = selectedBillIds.filter(billId => {
+//       const calc = calculatedBillsData[billId];
+//       if (calc?.fullyPaidByAdvance) return false;
+//       const maxAllowed = (calc?.payableAmount || 0) + 9;
+//       return (calc?.currentPaidAmount || 0) > maxAllowed + 0.001;
+//     });
+
+//     if (overpaidBills.length > 0) {
+//       alert("Current Paid Amount cannot exceed Payable Amount + ₹9 for one or more bills.");
+//       return;
 //     }
 
 //     const emptyPaidBills = selectedBillIds.filter(billId => {
@@ -453,6 +495,9 @@
 //       const hasAnyPreviousData = calc.latestPaid > 0 || calc.latestTDS > 0 || calc.latestBalance > 0;
 
 //       if (fullyPaid) {
+//         const tdsForAdvance = calc.tdsAmount || 0;
+//         const actualPaidAfterTDS = Math.max((calc.billAmount || 0) - tdsForAdvance - (calc.latestPaid || 0), 0);
+
 //         return {
 //           RccBillNo: bill.rccBillNo,
 //           Timestamp: timestamp,
@@ -464,11 +509,11 @@
 //           latestPaidAmount8: calc.latestPaid || 0,
 //           latestBalanceAmount8: calc.latestBalance || 0,
 //           latestTDSAmount8: calc.latestTDS || 0,
-//           tdsAmount8: calc.tdsAmount || 0,
-//           payableAmount8: 0,
-//           paidAmount8: (calc.latestPaid || 0) + (calc.effectiveAdvance || 0),
+//           tdsAmount8: tdsForAdvance,
+//           payableAmount8: actualPaidAfterTDS,
+//           paidAmount8: actualPaidAfterTDS,
 //           balanceAmount8: 0,
-//           PAID_AMOUNT_8: "",
+//           PAID_AMOUNT_8: actualPaidAfterTDS,
 //           ACTUAL_PAID_AMOUNT_8: calc.billAmount || 0,
 //           GRAND_TOTAL_AMOUNT: grandTotalValue,
 //           bankDetails8: "",
@@ -479,7 +524,7 @@
 //           hasPreviousData: hasAnyPreviousData,
 //           isAdvanceBill: true,
 //           advanceAmount: calc.advanceAmount || 0,
-//           advanceUsedForThisBill: calc.effectiveAdvance || 0,
+//           advanceUsedForThisBill: actualPaidAfterTDS,
 //           remainingAdvance: calc.excessAdvance || 0,
 //         };
 //       } else {
@@ -501,7 +546,7 @@
 //           tdsAmount8: calc.tdsAmount || 0,
 //           payableAmount8: calc.payableAmount || 0,
 //           paidAmount8: (calc.latestPaid || 0) + (calc.currentPaidAmount || 0),
-//           balanceAmount8: calc.balanceAmount || 0,
+//           balanceAmount8: calc.balanceAmount || 0,   // ✅ always ≥ 0
 //           PAID_AMOUNT_8: paidForPaymentSheet,
 //           ACTUAL_PAID_AMOUNT_8: calc.billAmount || 0,
 //           GRAND_TOTAL_AMOUNT: grandTotalValue,
@@ -515,7 +560,7 @@
 //           advanceAmount: calc.advanceAmount || 0,
 //           advanceUsedForThisBill: calc.effectiveAdvance || 0,
 //           remainingAdvance: 0,
-//           roundUpValue: calc.roundUpValue || 0,  // ✅ Round up bhi send karo
+//           roundUpValue: calc.roundUpValue || 0,
 //         };
 //       }
 //     });
@@ -532,9 +577,6 @@
 
 //   const uniqueFirms = [...new Set(uniqueContractors.map(c => c.firmName))].sort();
 
-//   // =================================================================
-//   // RENDER
-//   // =================================================================
 //   return (
 //     <div className="min-h-screen bg-gray-100 pt-8 px-2 md:px-6 pb-20">
 //       {isLoading && (
@@ -578,7 +620,6 @@
 //                 </button>
 //               </div>
 
-//               {/* Bills List */}
 //               <div className="space-y-6">
 //                 {filteredBills.map((bill) => {
 //                   const uniqueId = bill._id || bill.rccBillNo;
@@ -602,7 +643,6 @@
 //                           : isSelected ? "border-blue-600 ring-2 ring-blue-100"
 //                           : "border-gray-200 hover:border-blue-300"}`}>
 
-//                       {/* Bill Header */}
 //                       <div className={`p-4 flex items-center justify-between
 //                         ${fullyPaidByAdvance ? 'bg-purple-50' : isSelected ? 'bg-blue-50' : 'bg-gray-50'}`}>
 //                         <div className="flex items-center gap-4">
@@ -654,7 +694,6 @@
 //                         </div>
 //                       </div>
 
-//                       {/* Fully Paid Banner */}
 //                       {fullyPaidByAdvance && (
 //                         <div className="bg-purple-100 border-t-2 border-b-2 border-purple-300 p-3 flex items-center gap-3">
 //                           <span className="text-2xl">✅</span>
@@ -672,7 +711,6 @@
 //                         </div>
 //                       )}
 
-//                       {/* Bill Info */}
 //                       <div className="p-5">
 //                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-4 mb-4">
 //                           <InfoField label="Contractor Bill No" value={bill.contractorBillNo} />
@@ -701,21 +739,8 @@
 //                               colorClass={fullyPaidByAdvance ? "text-purple-600 font-bold" : "text-orange-600 font-bold"}
 //                             />
 //                           )}
-//                           {hasAdvance && billCalculations.effectiveAdvance !== billCalculations.advanceAmount && (
-//                             <InfoField
-//                               label="Advance Used"
-//                               value={billCalculations.effectiveAdvance}
-//                               isMoney={true}
-//                               colorClass="text-green-600 font-bold"
-//                             />
-//                           )}
 //                           {excessAdv > 0 && (
-//                             <InfoField
-//                               label="Excess Advance"
-//                               value={excessAdv}
-//                               isMoney={true}
-//                               colorClass="text-emerald-700 font-bold"
-//                             />
+//                             <InfoField label="Excess Advance" value={excessAdv} isMoney={true} colorClass="text-emerald-700 font-bold" />
 //                           )}
 //                         </div>
 
@@ -725,7 +750,6 @@
 //                         </div>
 //                       </div>
 
-//                       {/* Advance Adjusted Banner (partial) */}
 //                       {hasAdvance && !fullyPaidByAdvance && (
 //                         <div className="mx-5 mb-4 bg-orange-50 border-l-4 border-orange-400 p-3 flex items-center gap-2">
 //                           <span className="text-lg">⚡</span>
@@ -736,12 +760,11 @@
 //                         </div>
 //                       )}
 
-//                       {/* Payment Inputs (shown when selected) */}
 //                       {isSelected && (
 //                         <div className={`border-t-2 p-6 ${fullyPaidByAdvance ? 'bg-purple-50 border-purple-200' : 'bg-blue-50 border-blue-200'}`}>
 //                           <h3 className={`font-bold mb-4 flex items-center gap-2 ${fullyPaidByAdvance ? 'text-purple-800' : 'text-blue-800'}`}>
 //                             {fullyPaidByAdvance && <Lock size={16} />}
-//                             {fullyPaidByAdvance ? 'Payment Locked (Fully Paid by Advance)' : `Local Payment Inputs for Bill: ${bill.rccBillNo}`}
+//                             {fullyPaidByAdvance ? 'Payment Locked (Fully Paid by Advance) — TDS Editable' : `Local Payment Inputs for Bill: ${bill.rccBillNo}`}
 //                           </h3>
 
 //                           {hasAnyPreviousData && (
@@ -783,6 +806,7 @@
 //                             </div>
 //                           )}
 
+//                           {/* NORMAL BILLS */}
 //                           {!fullyPaidByAdvance && (
 //                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
 //                               <PaymentInputComponent
@@ -795,7 +819,14 @@
 //                                 placeholder={hasPreviousTDS ? "0 (Previous TDS Applied)" : "Enter TDS Amount"}
 //                                 readOnly={hasPreviousTDS}
 //                               />
-//                               <PaymentInput label="Payable Amount" value={billCalculations.payableAmount || 0} color="green" />
+
+//                               <PaymentInput
+//                                 label="Payable Amount"
+//                                 value={billCalculations.payableAmount || 0}
+//                                 color="green"
+//                               />
+
+//                               {/* ✅ Max = Payable + 9 */}
 //                               <PaymentInputComponent
 //                                 label="Current Paid Amount (8)"
 //                                 id={uniqueId}
@@ -804,7 +835,9 @@
 //                                 color="blue"
 //                                 isNumeric={true}
 //                                 placeholder="Enter Paid Amount"
+//                                 maxLimit={(billCalculations.payableAmount || 0) + 9}
 //                               />
+
 //                               <PaymentInputComponent
 //                                 label="Round Up (±9)"
 //                                 id={uniqueId}
@@ -814,17 +847,54 @@
 //                                 isNumeric={true}
 //                                 placeholder="-9.00 to +9.00"
 //                               />
-//                               <PaymentInput label="New Balance Amount" value={billCalculations.displayBalance ?? 0}
-//                                 color={billCalculations.displayBalance === 0 ? "green" : "red"} />
+
+//                               {/* ✅ Balance always ≥ 0 (never shows -9) */}
+//                               <PaymentInput
+//                                 label="New Balance Amount"
+//                                 value={billCalculations.displayBalance ?? 0}
+//                                 color={billCalculations.displayBalance === 0 ? "green" : "red"}
+//                               />
 //                             </div>
 //                           )}
 
+//                           {/* FULLY PAID BY ADVANCE */}
 //                           {fullyPaidByAdvance && (
-//                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-//                               <PaymentInput label="Bill Amount" value={billCalculations.billAmount || 0} color="purple" />
-//                               <PaymentInput label="Advance Used" value={billCalculations.effectiveAdvance || 0} color="purple" />
-//                               <PaymentInput label="New Balance" value={0} color="green" />
-//                             </div>
+//                             <>
+//                               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+//                                 <PaymentInput label="Bill Amount" value={billCalculations.billAmount || 0} color="purple" />
+//                                 <PaymentInput label="Advance Used" value={billCalculations.effectiveAdvance || 0} color="purple" />
+//                                 <PaymentInputComponent
+//                                   label="TDS Amount (8)"
+//                                   id={uniqueId}
+//                                   initialValue={inputs.tds_amount_8}
+//                                   onValueChange={(id, v) => handleInputChange(uniqueId, "tds_amount_8", v)}
+//                                   color="blue"
+//                                   isNumeric={true}
+//                                   placeholder={hasPreviousTDS ? "0 (Previous TDS Applied)" : "Enter TDS Amount"}
+//                                   readOnly={hasPreviousTDS}
+//                                 />
+//                                 <PaymentInput
+//                                   label="New Balance"
+//                                   value={billCalculations.displayBalance || 0}
+//                                   color={billCalculations.displayBalance === 0 ? "green" : "red"}
+//                                 />
+//                               </div>
+
+//                               {formatAmount(inputs.tds_amount_8) > 0 && (
+//                                 <div className="mt-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+//                                   <div className="flex items-center gap-2">
+//                                     <span className="text-lg">ℹ️</span>
+//                                     <div className="text-blue-800 text-sm">
+//                                       <strong>TDS ₹{formatAmount(inputs.tds_amount_8).toLocaleString("en-IN")}</strong> will be deducted.
+//                                       Actual paid from advance:
+//                                       <strong className="ml-1 text-green-700">
+//                                         ₹{formatAmount((billCalculations.billAmount || 0) - formatAmount(inputs.tds_amount_8)).toLocaleString("en-IN")}
+//                                       </strong>
+//                                     </div>
+//                                   </div>
+//                                 </div>
+//                               )}
+//                             </>
 //                           )}
 
 //                           {!fullyPaidByAdvance && (
@@ -842,7 +912,6 @@
 //                 })}
 //               </div>
 
-//               {/* Grand Total */}
 //               {selectedBillIds.length > 0 && !allSelectedAreAdvance && grandTotalCurrentPaidAmount > 0 && (
 //                 <div className="bg-green-50 p-6 rounded-xl shadow-lg border-2 border-green-400 my-8">
 //                   <div className="flex justify-between items-center">
@@ -851,13 +920,9 @@
 //                       ₹{grandTotalCurrentPaidAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
 //                     </div>
 //                   </div>
-//                   <p className="text-green-600 mt-1">
-//                     Sum of <strong>Current Paid Amount</strong> from {selectedBillIds.length} selected bills.
-//                   </p>
 //                 </div>
 //               )}
 
-//               {/* Global Payment Section */}
 //               {selectedBillIds.length > 0 && (
 //                 <div className="mt-8 mb-12" ref={globalPaymentRef}>
 //                   <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">
@@ -876,11 +941,10 @@
 //                   )}
 //                   {isBankNamesError && (
 //                     <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded-lg text-sm">
-//                       ⚠️ Bank names could not be loaded from server. Using default bank list.
+//                       ⚠️ Bank names could not be loaded. Using default list.
 //                     </div>
 //                   )}
 
-//                   {/* ✅ ALL ADVANCE - Direct submit */}
 //                   {allSelectedAreAdvance ? (
 //                     <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-purple-300">
 //                       <div className="p-6 bg-purple-50 rounded-lg border-2 border-purple-400 mb-6 text-center">
@@ -889,7 +953,7 @@
 //                           All Bills Fully Covered by Advance Payment
 //                         </h3>
 //                         <p className="text-purple-600 text-sm">
-//                           No payment details needed. Click Submit to update records.
+//                           No payment details needed. TDS applied where entered.
 //                         </p>
 //                         <p className="text-purple-500 text-xs mt-2">
 //                           {selectedBillIds.length} bill{selectedBillIds.length > 1 ? 's' : ''} selected
@@ -900,16 +964,11 @@
 //                           onClick={handleSubmitAll}
 //                           disabled={isSubmitting || selectedBillIds.length === 0}
 //                           className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-//                           {isSubmitting ? (
-//                             <>Submitting...</>
-//                           ) : (
-//                             <>✅ SUBMIT ADVANCE PAYMENT</>
-//                           )}
+//                           {isSubmitting ? "Submitting..." : "✅ SUBMIT ADVANCE PAYMENT"}
 //                         </button>
 //                       </div>
 //                     </div>
 //                   ) : (
-//                     /* ✅ NORMAL / MIXED BILLS */
 //                     <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-green-200">
 //                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 //                         <PaymentInputComponent
@@ -979,6 +1038,7 @@
 
 
 
+
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   useGetPendingPaymentsQuery,
@@ -1000,7 +1060,7 @@ const PaymentInputComponent = ({
   label, id, initialValue, onValueChange,
   color = "gray", isDate = false, isNumeric = true,
   options = null, readOnly = false, placeholder = "",
-  isLoading = false
+  isLoading = false, maxLimit = undefined
 }) => {
   const [localValue, setLocalValue] = useState(initialValue || "");
 
@@ -1054,6 +1114,19 @@ const PaymentInputComponent = ({
         if (label.includes("Round Up")) {
           num = Math.max(-9, Math.min(9, num));
         }
+        
+        // ✅ Max = Payable + ₹9 check and auto-correct
+        if (maxLimit !== undefined && num > maxLimit) {
+          const basePayable = Math.max(0, maxLimit - 9);
+          alert(
+            `Payable Amount is ₹${basePayable.toFixed(2)}.\n` +
+            `Maximum allowed payment (Payable + ₹9) is ₹${maxLimit.toFixed(2)}.\n\n` +
+            `Your entered amount (₹${num.toFixed(2)}) exceeds this limit.\n` +
+            `Amount auto-corrected to Payable Amount: ₹${basePayable.toFixed(2)}`
+          );
+          num = basePayable;
+        }
+
         val = num.toFixed(2);
       }
     }
@@ -1113,7 +1186,8 @@ const PaymentInput = ({ label, value, color = "gray" }) => {
   const inputStyle = `w-full text-lg font-semibold border-b-2 outline-none py-1 transition duration-150 cursor-default
     ${color === "green" ? "border-green-300 text-green-700 bg-gray-50"
       : color === "purple" ? "border-purple-300 text-purple-700 bg-purple-50"
-        : "border-red-300 text-red-700 bg-gray-50"}`;
+        : color === "red" ? "border-red-300 text-red-700 bg-gray-50"
+        : "border-gray-300 text-gray-700 bg-gray-50"}`;
   return (
     <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{label}</label>
@@ -1241,11 +1315,16 @@ const Payment_Tally = () => {
       const advance = formatAmount(bill?.advanceAmount || 0);
       const tdsValue = latestTDS > 0 ? "0" : "";
 
+      // Initial Payable Calculation for Auto-fill
+      const basePayable = latestBalance > 0 
+        ? Math.max(0, latestBalance - advance)
+        : Math.max(0, billAmount - formatAmount(tdsValue) - advance);
+
       setBillInputData(prev => ({
         ...prev,
         [billId]: {
           tds_amount_8: tdsValue,
-          paid_amount_8: prev[billId]?.paid_amount_8 || "",
+          paid_amount_8: prev[billId]?.paid_amount_8 || basePayable.toFixed(2), // ✅ Auto-fill Payable Amount
           round_up: prev[billId]?.round_up || "",
           latestPaidAmount8: latestPaid,
           latestBalanceAmount8: latestBalance,
@@ -1272,7 +1351,7 @@ const Payment_Tally = () => {
   };
 
   // ═══════════════════════════════════════════════════════════
-  // ✅ CALCULATIONS WITH ADVANCE + TDS + ROUND UP
+  // ✅ CALCULATIONS — Balance never goes negative for +9 overpay
   // ═══════════════════════════════════════════════════════════
   const calculatedBillsData = useMemo(() => {
     const data = {};
@@ -1292,11 +1371,34 @@ const Payment_Tally = () => {
         (latestPaid + advanceAmount) >= billAmount &&
         latestPaid < billAmount;
 
-      // ✅ TDS editable in both cases
       let tdsAmount = latestTDS > 0 ? 0 : getNumericValue(uniqueId, 'tds_amount_8');
-      const currentPaidAmount = fullyPaidByAdvance ? 0 : getNumericValue(uniqueId, 'paid_amount_8');
 
-      // ✅ Round Up (locked in fully paid case)
+      let effectiveAdvance;
+      let excessAdvance;
+
+      if (fullyPaidByAdvance) {
+        const actualPaidFromAdvance = Math.max(billAmount - tdsAmount - latestPaid, 0);
+        effectiveAdvance = Math.min(actualPaidFromAdvance, advanceAmount);
+        excessAdvance = advanceAmount - effectiveAdvance;
+      } else {
+        const maxAdvanceUsable = Math.max(billAmount - latestPaid, 0);
+        effectiveAdvance = Math.min(advanceAmount, maxAdvanceUsable);
+        excessAdvance = advanceAmount > maxAdvanceUsable ? advanceAmount - maxAdvanceUsable : 0;
+      }
+
+      // Payable Amount
+      let payableAmount;
+      if (fullyPaidByAdvance) {
+        payableAmount = Math.max(billAmount - tdsAmount, 0);
+      } else if (latestBalance > 0) {
+        payableAmount = Math.max(latestBalance - effectiveAdvance - tdsAmount, 0);
+      } else {
+        payableAmount = Math.max(billAmount - tdsAmount - effectiveAdvance, 0);
+      }
+
+      let currentPaidAmount = fullyPaidByAdvance ? 0 : getNumericValue(uniqueId, 'paid_amount_8');
+
+      // Round Up (±9)
       let roundUpValue = 0;
       if (!fullyPaidByAdvance) {
         const rawRoundUp = inputs.round_up;
@@ -1308,44 +1410,27 @@ const Payment_Tally = () => {
         }
       }
 
-      // ✅ Effective Advance = Actual paid from advance (after TDS)
-      // If fully paid by advance: advance covers (Bill - TDS)
-      // Else: advance covers min(remaining after paid, advance)
-      let effectiveAdvance;
-      let excessAdvance;
-
-      if (fullyPaidByAdvance) {
-        // ✅ Only actual paid amount (Bill - TDS) will be deducted
-        const actualPaidFromAdvance = Math.max(billAmount - tdsAmount - latestPaid, 0);
-        effectiveAdvance = Math.min(actualPaidFromAdvance, advanceAmount);
-        excessAdvance = advanceAmount - effectiveAdvance;
-      } else {
-        const maxAdvanceUsable = Math.max(billAmount - latestPaid, 0);
-        effectiveAdvance = Math.min(advanceAmount, maxAdvanceUsable);
-        excessAdvance = advanceAmount > maxAdvanceUsable ? advanceAmount - maxAdvanceUsable : 0;
-      }
-
-      // ✅ Payable Amount
-      let payableAmount;
-      if (fullyPaidByAdvance) {
-        // Bill - TDS (jo advance se cover hoga)
-        payableAmount = Math.max(billAmount - tdsAmount, 0);
-      } else if (latestBalance > 0) {
-        payableAmount = Math.max(latestBalance - effectiveAdvance - tdsAmount, 0);
-      } else {
-        payableAmount = Math.max(billAmount - tdsAmount - effectiveAdvance, 0);
-      }
-
       const totalPaid = latestPaid + currentPaidAmount;
 
-      // ✅ Balance calculation
+      // ─────────────────────────────────────────────────────────
+      // ✅ BALANCE LOGIC
+      // Payable Amount tak ya ₹9 extra tak pay hone par Balance = 0.00
+      // ─────────────────────────────────────────────────────────
       let balanceAmount;
       if (fullyPaidByAdvance) {
-        // Advance covers (Bill - TDS), so balance = 0
         balanceAmount = Math.max(billAmount - (latestPaid + tdsAmount + effectiveAdvance), 0);
       } else {
-        balanceAmount = billAmount - (totalPaid + tdsAmount + effectiveAdvance) + roundUpValue;
-        balanceAmount = Math.max(balanceAmount, 0);
+        let rawBalance = billAmount - (totalPaid + tdsAmount + effectiveAdvance) + roundUpValue;
+        rawBalance = Math.round(rawBalance * 100) / 100;
+
+        // Balance zero floor when within Payable + ₹9 window
+        if (currentPaidAmount > 0 && currentPaidAmount <= payableAmount + 9) {
+          balanceAmount = Math.max(0, rawBalance);
+        } else {
+          balanceAmount = Math.max(0, rawBalance);
+        }
+
+        if (balanceAmount === -0) balanceAmount = 0;
       }
 
       const totalAllAmounts = latestPaid + currentPaidAmount + latestTDS + effectiveAdvance + roundUpValue + tdsAmount;
@@ -1398,12 +1483,10 @@ const Payment_Tally = () => {
       return;
     }
 
-    let advanceBillCount = 0;
     let normalBillCount = 0;
     selectedBillIds.forEach((billId) => {
       const bill = filteredBills.find(b => (b._id || b.rccBillNo) === billId);
-      if (bill && isFullyPaidByAdvance(bill)) advanceBillCount++;
-      else normalBillCount++;
+      if (!(bill && isFullyPaidByAdvance(bill))) normalBillCount++;
     });
 
     if (normalBillCount > 0) {
@@ -1413,6 +1496,17 @@ const Payment_Tally = () => {
       if (!globalPaymentData.PAYMENT_DATE_8) missing.push("Payment Date");
       if (missing.length > 0) {
         alert(`Please fill: ${missing.join(", ")}`);
+        return;
+      }
+    }
+
+    // Double-check max limit and auto-correct before sending payload
+    for (const billId of selectedBillIds) {
+      const calc = calculatedBillsData[billId];
+      if (calc?.fullyPaidByAdvance) continue;
+      const maxAllowed = (calc?.payableAmount || 0) + 9;
+      if ((calc?.currentPaidAmount || 0) > maxAllowed + 0.001) {
+        alert(`Bill ${billId}: Current Paid Amount (₹${calc.currentPaidAmount}) cannot exceed Payable Amount + ₹9 (₹${maxAllowed.toFixed(2)}). Please adjust.`);
         return;
       }
     }
@@ -1444,12 +1538,8 @@ const Payment_Tally = () => {
       const hasAnyPreviousData = calc.latestPaid > 0 || calc.latestTDS > 0 || calc.latestBalance > 0;
 
       if (fullyPaid) {
-        // ═══════════════════════════════════════════════
-        // ✅ ADVANCE BILL PAYLOAD - TDS Deducted
-        // ═══════════════════════════════════════════════
         const tdsForAdvance = calc.tdsAmount || 0;
         const actualPaidAfterTDS = Math.max((calc.billAmount || 0) - tdsForAdvance - (calc.latestPaid || 0), 0);
-        const actualAdvanceUsed = actualPaidAfterTDS;
 
         return {
           RccBillNo: bill.rccBillNo,
@@ -1462,10 +1552,10 @@ const Payment_Tally = () => {
           latestPaidAmount8: calc.latestPaid || 0,
           latestBalanceAmount8: calc.latestBalance || 0,
           latestTDSAmount8: calc.latestTDS || 0,
-          tdsAmount8: tdsForAdvance,                       // ✅ TDS
-          payableAmount8: actualPaidAfterTDS,              // ✅ BB = Bill - TDS
-          paidAmount8: actualPaidAfterTDS,                 // ✅ BC = Same
-          balanceAmount8: 0,                               // ✅ BD = 0
+          tdsAmount8: tdsForAdvance,
+          payableAmount8: actualPaidAfterTDS,
+          paidAmount8: actualPaidAfterTDS,
+          balanceAmount8: 0,
           PAID_AMOUNT_8: actualPaidAfterTDS,
           ACTUAL_PAID_AMOUNT_8: calc.billAmount || 0,
           GRAND_TOTAL_AMOUNT: grandTotalValue,
@@ -1477,7 +1567,7 @@ const Payment_Tally = () => {
           hasPreviousData: hasAnyPreviousData,
           isAdvanceBill: true,
           advanceAmount: calc.advanceAmount || 0,
-          advanceUsedForThisBill: actualAdvanceUsed,       // ✅ Sirf actual amount cut hoga
+          advanceUsedForThisBill: actualPaidAfterTDS,
           remainingAdvance: calc.excessAdvance || 0,
         };
       } else {
@@ -1766,13 +1856,27 @@ const Payment_Tally = () => {
                                 label="TDS Amount (8)"
                                 id={uniqueId}
                                 initialValue={inputs.tds_amount_8}
-                                onValueChange={(id, v) => handleInputChange(uniqueId, "tds_amount_8", v)}
+                                onValueChange={(id, v) => {
+                                  handleInputChange(uniqueId, "tds_amount_8", v);
+                                  // Re-calculate payable and auto-update paid amount
+                                  const tdsVal = formatAmount(v);
+                                  const baseBill = billCalculations.latestBalance > 0 ? billCalculations.latestBalance : billCalculations.billAmount;
+                                  const newPayable = Math.max(0, baseBill - tdsVal - billCalculations.effectiveAdvance);
+                                  handleInputChange(uniqueId, "paid_amount_8", newPayable.toFixed(2));
+                                }}
                                 color="blue"
                                 isNumeric={true}
                                 placeholder={hasPreviousTDS ? "0 (Previous TDS Applied)" : "Enter TDS Amount"}
                                 readOnly={hasPreviousTDS}
                               />
-                              <PaymentInput label="Payable Amount" value={billCalculations.payableAmount || 0} color="green" />
+
+                              <PaymentInput
+                                label="Payable Amount"
+                                value={billCalculations.payableAmount || 0}
+                                color="green"
+                              />
+
+                              {/* ✅ Max = Payable + ₹9 */}
                               <PaymentInputComponent
                                 label="Current Paid Amount (8)"
                                 id={uniqueId}
@@ -1781,7 +1885,9 @@ const Payment_Tally = () => {
                                 color="blue"
                                 isNumeric={true}
                                 placeholder="Enter Paid Amount"
+                                maxLimit={(billCalculations.payableAmount || 0) + 9}
                               />
+
                               <PaymentInputComponent
                                 label="Round Up (±9)"
                                 id={uniqueId}
@@ -1791,25 +1897,22 @@ const Payment_Tally = () => {
                                 isNumeric={true}
                                 placeholder="-9.00 to +9.00"
                               />
-                              <PaymentInput label="New Balance Amount" value={billCalculations.displayBalance ?? 0}
-                                color={billCalculations.displayBalance === 0 ? "green" : "red"} />
+
+                              {/* ✅ Balance always ≥ 0 (never shows negative) */}
+                              <PaymentInput
+                                label="New Balance Amount"
+                                value={billCalculations.displayBalance ?? 0}
+                                color={billCalculations.displayBalance === 0 ? "green" : "red"}
+                              />
                             </div>
                           )}
 
-                          {/* FULLY PAID BY ADVANCE - TDS Editable */}
+                          {/* FULLY PAID BY ADVANCE */}
                           {fullyPaidByAdvance && (
                             <>
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                <PaymentInput
-                                  label="Bill Amount"
-                                  value={billCalculations.billAmount || 0}
-                                  color="purple"
-                                />
-                                <PaymentInput
-                                  label="Advance Used"
-                                  value={billCalculations.effectiveAdvance || 0}
-                                  color="purple"
-                                />
+                                <PaymentInput label="Bill Amount" value={billCalculations.billAmount || 0} color="purple" />
+                                <PaymentInput label="Advance Used" value={billCalculations.effectiveAdvance || 0} color="purple" />
                                 <PaymentInputComponent
                                   label="TDS Amount (8)"
                                   id={uniqueId}
