@@ -570,34 +570,214 @@ router.get("/Get-Bank-Names", async (req, res) => {
   }
 });
 
+// router.get("/Get-Payment", async (req, res) => {
+//   try {
+//     // ─── Fetch Contractor_Payment_FMS (bills) ───
+//     const response = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: "Contractor_Payment_FMS!A7:BE",
+//     });
+
+//     // ─── Fetch Payment_Sheet (previous payments) ───
+//     const paymentSheetResponse = await sheets.spreadsheets.values.get({
+//       spreadsheetId,
+//       range: "Payment_Sheet!A:L",
+//     });
+
+//     // ─── ✅ Fetch Advance Data (Column R = "Advance") ───
+//     let advanceRows = [];
+//     try {
+//       const advanceResponse = await sheets.spreadsheets.values.get({
+//         spreadsheetId,
+//         range: "Payment_Sheet!A:R",
+//       });
+//       advanceRows = advanceResponse.data.values || [];
+//       console.log(`Total rows in Payment_Sheet A:R: ${advanceRows.length}`);
+//     } catch (advErr) {
+//       console.warn("Advance fetch failed:", advErr.message);
+//     }
+
+//     let rows = response.data.values || [];
+//     let paymentRows = paymentSheetResponse.data.values || [];
+
+//     if (rows.length > 0) rows = rows.slice(1);
+
+//     // ═══════════════════════════════════════════════════════════
+//     // ✅ ADVANCE MAP - Column R = "Advance"
+//     // Match: C (Project) + E (Contractor Firm Name)
+//     // Priority: L (remaining) > K (original)
+//     // ═══════════════════════════════════════════════════════════
+//     const advanceMap = new Map();
+
+//     for (let i = 1; i < advanceRows.length; i++) {
+//       const aRow = advanceRows[i];
+//       if (!aRow) continue;
+
+//       // ✅ Column R (index 17) = "Advance" check
+//       const colR = (aRow[17] || "").toString().trim();
+//       if (colR !== "Advance") continue;
+
+//       const aProject = (aRow[2] || "").toString().trim();      // C - Project
+//       const aContractor = (aRow[4] || "").toString().trim();   // ✅ E - Contractor Firm
+
+//       // K = Paid Amount (original), L = Balance (remaining)
+//       const aAmountK = parseFloat((aRow[10] || "0").toString().replace(/,/g, "")) || 0;
+//       const aAmountL = (aRow[11] || "").toString().replace(/,/g, "").trim();
+
+//       // Priority: L (remaining) > K (original)
+//       let advanceRemaining = 0;
+//       if (aAmountL !== "" && !isNaN(parseFloat(aAmountL))) {
+//         advanceRemaining = parseFloat(aAmountL);
+//       } else {
+//         advanceRemaining = aAmountK;
+//       }
+
+//       if (!aProject || !aContractor) continue;
+
+//       const key = `${aProject.toLowerCase()}|||${aContractor.toLowerCase()}`;
+//       if (advanceRemaining > 0) {
+//         advanceMap.set(key, (advanceMap.get(key) || 0) + advanceRemaining);
+//         console.log(`✅ [Advance] ${aProject} | ${aContractor} | Amount: ${advanceRemaining}`);
+//       }
+//     }
+
+//     console.log(`[Advance Map] Total Entries: ${advanceMap.size}`);
+//     console.log('[Advance Map] All keys:', Array.from(advanceMap.keys()));
+
+//     // ═══════════════════════════════════════════════════════════
+//     // Process Bills
+//     // ═══════════════════════════════════════════════════════════
+//     const filteredData = rows
+//       .filter((row) => {
+//         const planned7 = (row[47] || "").toString().trim();
+//         const bdBalance = (row[55] || "").toString().trim();
+
+//         // Rule 1: planned7 empty hai to skip
+//         if (planned7 === "") return false;
+
+//         // Rule 2: BD column 0 hai to skip
+//         if (
+//           bdBalance === "0" ||
+//           bdBalance === "0.00" ||
+//           parseFloat(bdBalance) === 0
+//         ) {
+//           return false;
+//         }
+
+//         return true;
+//       })
+//       .map((row) => {
+//         const currentBillNo = (row[1] || "").toString().trim();
+//         const projectName = (row[3] || "").toString().trim();
+//         const contractorName = (row[5] || "").toString().trim();
+//         const firmName = (row[6] || "").toString().trim();
+
+//         // ═══════════════════════════════════════════════
+//         // Previous Paid/Balance/TDS from Payment_Sheet
+//         // Match: F column (index 5) = RccBillNo
+//         // ═══════════════════════════════════════════════
+//         let latestPaidAmount = "0";
+//         let latestBalanceAmount = "0";
+//         let latestTDSAmount = "0";
+
+//         for (let i = paymentRows.length - 1; i >= 0; i--) {
+//           const pRow = paymentRows[i];
+//           if (!pRow) continue;
+
+//           const pBillNo = (pRow[5] || "").toString().trim();
+//           if (pBillNo === currentBillNo) {
+//             latestPaidAmount = pRow[10] || "0";   // K
+//             latestBalanceAmount = pRow[11] || "0"; // L
+//             latestTDSAmount = pRow[8] || "0";      // I
+//             break;
+//           }
+//         }
+
+//         // ✅ Advance amount - MATCH WITH FIRM NAME (E column)
+//         const advanceKey = `${projectName.toLowerCase()}|||${firmName.toLowerCase()}`;
+//         const advanceAmount = advanceMap.get(advanceKey) || 0;
+
+//         if (advanceAmount > 0) {
+//           console.log(`💰 Bill ${currentBillNo}: Project=${projectName}, Firm=${firmName}, Advance=${advanceAmount}`);
+//         }
+
+//         return {
+//           rccBillNo: currentBillNo,
+//           projectId: row[2] || "",
+//           projectName: projectName,
+//           siteEngineer: row[4] || "",
+//           contractorName: contractorName,
+//           firmName: firmName,
+//           workName: row[7] || "",
+//           contractorBillNo: row[8] || "",
+//           billDate: row[9] || "",
+//           billUrl: row[10] || "",
+//           WorkOrderNo: row[16] || "",
+//           WorkOrderValue: row[18] || "",
+//           billAmount: row[51] || "",
+//           NETAMOUNTCurrentAmount: row[26] || "",
+//           planned7: row[47] || "",
+//           actual7: row[48] || "",
+
+//           // Previous payments
+//           latestPaidAmount8: latestPaidAmount,
+//           latestBalanceAmount8: latestBalanceAmount,
+//           latestTDSAmount8: latestTDSAmount,
+
+//           // ✅ Advance amount
+//           advanceAmount: advanceAmount,
+//         };
+//       });
+
+//     const uniqueContractors = [];
+//     const seen = new Set();
+//     filteredData.forEach((item) => {
+//       const key = `${item.contractorName}||${item.firmName}`;
+//       if (!seen.has(key) && item.contractorName && item.firmName) {
+//         seen.add(key);
+//         uniqueContractors.push({
+//           contractorName: item.contractorName,
+//           firmName: item.firmName,
+//         });
+//       }
+//     });
+
+//     res.json({
+//       success: true,
+//       data: filteredData,
+//       uniqueContractors: uniqueContractors,
+//     });
+//   } catch (error) {
+//     console.error("Error in /Get-Payment:", error.message);
+//     res.status(500).json({
+//       success: false,
+//       error: "Failed to fetch payment data",
+//       details: error.message,
+//     });
+//   }
+// });
+
+
+
+
 router.get("/Get-Payment", async (req, res) => {
   try {
-    // ─── Fetch Contractor_Payment_FMS (bills) ───
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Contractor_Payment_FMS!A7:BE",
-    });
-
-    // ─── Fetch Payment_Sheet (previous payments) ───
-    const paymentSheetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Payment_Sheet!A:L",
-    });
-
-    // ─── ✅ Fetch Advance Data (Column R = "Advance") ───
-    let advanceRows = [];
-    try {
-      const advanceResponse = await sheets.spreadsheets.values.get({
+    // ═══════════════════════════════════════════════════════════
+    // ✅ SPEED FIX: Promise.all se FMS & Payment_Sheet DONO Ek Saath Fetch Hoge
+    // Payment_Sheet ko sirf 1 baar (A:R) fetch karenge (Duplicate fetch removed)
+    // ═══════════════════════════════════════════════════════════
+    const [fmsResponse, paymentSheetResponse] = await Promise.all([
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Contractor_Payment_FMS!A7:BE",
+      }),
+      sheets.spreadsheets.values.get({
         spreadsheetId,
         range: "Payment_Sheet!A:R",
-      });
-      advanceRows = advanceResponse.data.values || [];
-      console.log(`Total rows in Payment_Sheet A:R: ${advanceRows.length}`);
-    } catch (advErr) {
-      console.warn("Advance fetch failed:", advErr.message);
-    }
+      }),
+    ]);
 
-    let rows = response.data.values || [];
+    let rows = fmsResponse.data.values || [];
     let paymentRows = paymentSheetResponse.data.values || [];
 
     if (rows.length > 0) rows = rows.slice(1);
@@ -605,26 +785,23 @@ router.get("/Get-Payment", async (req, res) => {
     // ═══════════════════════════════════════════════════════════
     // ✅ ADVANCE MAP - Column R = "Advance"
     // Match: C (Project) + E (Contractor Firm Name)
-    // Priority: L (remaining) > K (original)
     // ═══════════════════════════════════════════════════════════
     const advanceMap = new Map();
 
-    for (let i = 1; i < advanceRows.length; i++) {
-      const aRow = advanceRows[i];
+    for (let i = 1; i < paymentRows.length; i++) {
+      const aRow = paymentRows[i];
       if (!aRow) continue;
 
-      // ✅ Column R (index 17) = "Advance" check
+      // Column R (index 17) = "Advance" check
       const colR = (aRow[17] || "").toString().trim();
       if (colR !== "Advance") continue;
 
       const aProject = (aRow[2] || "").toString().trim();      // C - Project
-      const aContractor = (aRow[4] || "").toString().trim();   // ✅ E - Contractor Firm
+      const aContractor = (aRow[4] || "").toString().trim();   // E - Contractor Firm
 
-      // K = Paid Amount (original), L = Balance (remaining)
       const aAmountK = parseFloat((aRow[10] || "0").toString().replace(/,/g, "")) || 0;
       const aAmountL = (aRow[11] || "").toString().replace(/,/g, "").trim();
 
-      // Priority: L (remaining) > K (original)
       let advanceRemaining = 0;
       if (aAmountL !== "" && !isNaN(parseFloat(aAmountL))) {
         advanceRemaining = parseFloat(aAmountL);
@@ -637,12 +814,8 @@ router.get("/Get-Payment", async (req, res) => {
       const key = `${aProject.toLowerCase()}|||${aContractor.toLowerCase()}`;
       if (advanceRemaining > 0) {
         advanceMap.set(key, (advanceMap.get(key) || 0) + advanceRemaining);
-        console.log(`✅ [Advance] ${aProject} | ${aContractor} | Amount: ${advanceRemaining}`);
       }
     }
-
-    console.log(`[Advance Map] Total Entries: ${advanceMap.size}`);
-    console.log('[Advance Map] All keys:', Array.from(advanceMap.keys()));
 
     // ═══════════════════════════════════════════════════════════
     // Process Bills
@@ -672,10 +845,7 @@ router.get("/Get-Payment", async (req, res) => {
         const contractorName = (row[5] || "").toString().trim();
         const firmName = (row[6] || "").toString().trim();
 
-        // ═══════════════════════════════════════════════
         // Previous Paid/Balance/TDS from Payment_Sheet
-        // Match: F column (index 5) = RccBillNo
-        // ═══════════════════════════════════════════════
         let latestPaidAmount = "0";
         let latestBalanceAmount = "0";
         let latestTDSAmount = "0";
@@ -693,13 +863,9 @@ router.get("/Get-Payment", async (req, res) => {
           }
         }
 
-        // ✅ Advance amount - MATCH WITH FIRM NAME (E column)
+        // Advance amount match
         const advanceKey = `${projectName.toLowerCase()}|||${firmName.toLowerCase()}`;
         const advanceAmount = advanceMap.get(advanceKey) || 0;
-
-        if (advanceAmount > 0) {
-          console.log(`💰 Bill ${currentBillNo}: Project=${projectName}, Firm=${firmName}, Advance=${advanceAmount}`);
-        }
 
         return {
           rccBillNo: currentBillNo,
@@ -724,7 +890,7 @@ router.get("/Get-Payment", async (req, res) => {
           latestBalanceAmount8: latestBalanceAmount,
           latestTDSAmount8: latestTDSAmount,
 
-          // ✅ Advance amount
+          // Advance amount
           advanceAmount: advanceAmount,
         };
       });
